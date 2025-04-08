@@ -18,7 +18,7 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     SettingCardGroup, RadioButton, ExpandSettingCard, ComboBox, SwitchButton, IndicatorPosition, qconfig, \
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, Slider, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
-    NavigationBar, NavigationBarPushButton, BodyLabel, InfoBadge
+    NavigationBar, NavigationBarPushButton, BodyLabel, InfoBadge, SplashScreen
 from qfluentwidgets.components.widgets.line_edit import EditLayer
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -464,60 +464,6 @@ class SwitchSettingCard(SettingCard):
         return self.switchButton.isChecked()
 
 
-class RangeSettingCard(SettingCard):
-    valueChanged = pyqtSignal(int)
-
-    def __init__(self, configItem, icon: Union[str, QIcon, FIF], title, content=None, parent=None):
-        """
-        Parameters
-        ----------
-        configItem: RangeConfigItem
-            configuration item operated by the card
-
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        parent: QWidget
-            parent widget
-        """
-        super().__init__(icon, title, content, parent)
-        self.configItem = configItem
-        self.slider = Slider(Qt.Horizontal, self)
-        self.valueLabel = QLabel(self)
-        self.slider.setMinimumWidth(268)
-
-        self.slider.setSingleStep(1)
-        self.slider.setRange(*configItem.range)
-        self.slider.setValue(configItem.value)
-        self.valueLabel.setText(str(configItem.value / 10) + ' s')
-
-        self.hBoxLayout.addStretch(1)
-        self.hBoxLayout.addWidget(self.valueLabel, 0, Qt.AlignRight)
-        self.hBoxLayout.addSpacing(6)
-        self.hBoxLayout.addWidget(self.slider, 0, Qt.AlignRight)
-        self.hBoxLayout.addSpacing(16)
-
-        self.valueLabel.setObjectName('valueLabel')
-        configItem.valueChanged.connect(self.setValue)
-        self.slider.valueChanged.connect(self.__onValueChanged)
-
-    def __onValueChanged(self, value: int):
-        self.setValue(value)
-        self.valueChanged.emit(value)
-
-    def setValue(self, value):
-        qconfig.set(self.configItem, value)
-        self.valueLabel.setText(str(value / 10) + ' s')
-        self.valueLabel.adjustSize()
-        self.slider.setValue(value)
-
-
 class PushSettingCard(SettingCard):
     clicked = pyqtSignal()
 
@@ -580,8 +526,8 @@ class SpinBoxSettingCard(SettingCard):
         self.spinBox = SpinBox(self)
         self.spinBox.setFixedWidth(130)
         self.spinBox.setAccelerated(True)
-        self.spinBox.setMaximum(5)
-        self.spinBox.setMinimum(1)
+        self.spinBox.setMaximum(999)
+        self.spinBox.setMinimum(2)
         self.spinBox.setValue(configItem.value)
 
         self.hBoxLayout.addStretch(1)
@@ -649,242 +595,6 @@ class ComboBoxSettingCard(SettingCard):
         qconfig.set(self.configItem, value)
 
 
-class OptionsSettingCard(ExpandSettingCard):
-    optionChanged = pyqtSignal(OptionsConfigItem)
-
-    def __init__(self, configItem, icon: Union[str, QIcon, FIF], title, content=None, texts=None, parent=None):
-        """
-        Parameters
-        ----------
-        configItem: OptionsConfigItem
-            options config item
-
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of setting card
-
-        content: str
-            the content of setting card
-
-        texts: List[str]
-            the texts of radio buttons
-
-        parent: QWidget
-            parent window
-        """
-        super().__init__(icon, title, content, parent)
-        self.texts = texts or []
-        self.configItem = configItem
-        self.configName = configItem.name
-        self.choiceLabel = QLabel(self)
-        self.buttonGroup = QButtonGroup(self)
-
-        self.addWidget(self.choiceLabel)
-
-        self.viewLayout.setSpacing(19)
-        self.viewLayout.setContentsMargins(48, 18, 0, 18)
-        for text, option in zip(texts, configItem.options):
-            button = RadioButton(text, self.view)
-            self.buttonGroup.addButton(button)
-            self.viewLayout.addWidget(button)
-            button.setProperty(self.configName, option)
-
-        self._adjustViewSize()
-        self.setValue(qconfig.get(self.configItem))
-        configItem.valueChanged.connect(self.setValue)
-        self.buttonGroup.buttonClicked.connect(self.__onButtonClicked)
-        if darkdetect.isDark():
-            self.choiceLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
-        else:
-            self.choiceLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
-
-    def __onButtonClicked(self, button: RadioButton):
-        if button.text() == self.choiceLabel.text():
-            return
-
-        value = button.property(self.configName)
-        qconfig.set(self.configItem, value)
-
-        self.choiceLabel.setText(button.text())
-        self.choiceLabel.adjustSize()
-        self.optionChanged.emit(self.configItem)
-
-    def setValue(self, value):
-        qconfig.set(self.configItem, value)
-
-        for button in self.buttonGroup.buttons():
-            isChecked = button.property(self.configName) == value
-            button.setChecked(isChecked)
-
-            if isChecked:
-                self.choiceLabel.setText(button.text())
-
-
-class FolderItem(QWidget):
-    def __init__(self, folder: str, parent=None):
-        super().__init__(parent=parent)
-        self.hBoxLayout = QHBoxLayout(self)
-        self.badge = InfoBadge.custom(folder[:2], '#9a9a9a', '#8e8e8e')
-        self.folderLabel = BodyLabel(folder[4:], self)
-        if darkdetect.isDark():
-            self.folderLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
-        else:
-            self.folderLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
-
-        self.changeButton = HyperlinkButton(self)
-        self.changeButton.setText("更改")
-
-        self.setFixedHeight(53)
-        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
-        self.hBoxLayout.setContentsMargins(48, 0, 60, 0)
-        self.hBoxLayout.addWidget(self.badge, 0, Qt.AlignLeft)
-        self.hBoxLayout.addWidget(self.folderLabel, 0, Qt.AlignLeft)
-        self.hBoxLayout.addSpacing(16)
-        self.hBoxLayout.addStretch(1)
-        self.hBoxLayout.addWidget(self.changeButton, 0, Qt.AlignRight)
-        self.hBoxLayout.setAlignment(Qt.AlignVCenter)
-
-    def setFolder(self, text):
-        self.folderLabel.setText(text[4:])
-        if darkdetect.isDark():
-            self.folderLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
-        else:
-            self.folderLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
-
-
-class CustomFolderListSettingCard(ExpandSettingCard):
-    folderChanged = pyqtSignal(list)
-
-    def __init__(self, title: str, content: str = None, directory=cfg.sourceFolder.value, parent=None):
-        """
-        Parameters
-        ----------
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        directory: str
-            working directory of file dialog
-
-        parent: QWidget
-            parent widget
-        """
-        super().__init__(FIF.FOLDER_ADD, title, content, parent)
-        self._dialogDirectory = directory
-        self.__initWidget()
-
-    def __initWidget(self):
-        self.viewLayout.setSpacing(0)
-        self.viewLayout.setAlignment(Qt.AlignTop)
-        self.viewLayout.setContentsMargins(0, 0, 0, 0)
-
-        self.yuwenItem = FolderItem("语文: " + cfg.yuwenFolder.value, self.view)
-        self.shuxueItem = FolderItem("数学: " + cfg.shuxueFolder.value, self.view)
-        self.yingyuItem = FolderItem("英语: " + cfg.yingyuFolder.value, self.view)
-        self.wuliItem = FolderItem("物理: " + cfg.wuliFolder.value, self.view)
-        self.huaxueItem = FolderItem("化学: " + cfg.huaxueFolder.value, self.view)
-        self.shengwuItem = FolderItem("生物: " + cfg.shengwuFolder.value, self.view)
-        self.zhengzhiItem = FolderItem("政治: " + cfg.zhengzhiFolder.value, self.view)
-        self.lishiItem = FolderItem("历史: " + cfg.lishiFolder.value, self.view)
-        self.diliItem = FolderItem("地理: " + cfg.diliFolder.value, self.view)
-        self.jishuItem = FolderItem("技术: " + cfg.jishuFolder.value, self.view)
-        self.ziliaoItem = FolderItem("资料: " + cfg.ziliaoFolder.value, self.view)
-        self.yuwenItem.changeButton.clicked.connect(lambda: self.showFolderDialog(1))
-        self.shuxueItem.changeButton.clicked.connect(lambda: self.showFolderDialog(2))
-        self.yingyuItem.changeButton.clicked.connect(lambda: self.showFolderDialog(3))
-        self.wuliItem.changeButton.clicked.connect(lambda: self.showFolderDialog(4))
-        self.huaxueItem.changeButton.clicked.connect(lambda: self.showFolderDialog(5))
-        self.shengwuItem.changeButton.clicked.connect(lambda: self.showFolderDialog(6))
-        self.zhengzhiItem.changeButton.clicked.connect(lambda: self.showFolderDialog(7))
-        self.lishiItem.changeButton.clicked.connect(lambda: self.showFolderDialog(8))
-        self.diliItem.changeButton.clicked.connect(lambda: self.showFolderDialog(9))
-        self.jishuItem.changeButton.clicked.connect(lambda: self.showFolderDialog(10))
-        self.ziliaoItem.changeButton.clicked.connect(lambda: self.showFolderDialog(11))
-
-        self.viewLayout.addWidget(self.yuwenItem)
-        self.viewLayout.addWidget(self.shuxueItem)
-        self.viewLayout.addWidget(self.yingyuItem)
-        self.viewLayout.addWidget(self.wuliItem)
-        self.viewLayout.addWidget(self.huaxueItem)
-        self.viewLayout.addWidget(self.shengwuItem)
-        self.viewLayout.addWidget(self.zhengzhiItem)
-        self.viewLayout.addWidget(self.lishiItem)
-        self.viewLayout.addWidget(self.diliItem)
-        self.viewLayout.addWidget(self.jishuItem)
-        self.viewLayout.addWidget(self.ziliaoItem)
-
-        self._adjustViewSize()
-
-    def showFolderDialog(self, index):
-        folder = QFileDialog.getExistingDirectory(self, self.tr("选择文件夹"), self._dialogDirectory)
-        if not folder:
-            return
-
-        if index==1:
-            cfg.set(cfg.yuwenFolder, folder)
-            self.yuwenItem.setFolder("语文: " + cfg.yuwenFolder.value)
-        elif index==2:
-            cfg.set(cfg.shuxueFolder, folder)
-            self.shuxueItem.setFolder("数学: " + cfg.shuxueFolder.value)
-        elif index==3:
-            cfg.set(cfg.yingyuFolder, folder)
-            self.yingyuItem.setFolder("英语: " + cfg.yingyuFolder.value)
-        elif index==4:
-            cfg.set(cfg.wuliFolder, folder)
-            self.wuliItem.setFolder("物理: " + cfg.wuliFolder.value)
-        elif index==5:
-            cfg.set(cfg.huaxueFolder, folder)
-            self.huaxueItem.setFolder("化学: " + cfg.huaxueFolder.value)
-        elif index==6:
-            cfg.set(cfg.shengwuFolder, folder)
-            self.shengwuItem.setFolder("生物: " + cfg.shengwuFolder.value)
-        elif index==7:
-            cfg.set(cfg.zhengzhiFolder, folder)
-            self.zhengzhiItem.setFolder("政治: " + cfg.zhengzhiFolder.value)
-        elif index==8:
-            cfg.set(cfg.lishiFolder, folder)
-            self.lishiItem.setFolder("历史: " + cfg.lishiFolder.value)
-        elif index==9:
-            cfg.set(cfg.lishiFolder, folder)
-            self.diliItem.setFolder("地理: " + cfg.diliFolder.value)
-        elif index==10:
-            cfg.set(cfg.jishuFolder, folder)
-            self.jishuItem.setFolder("技术: " + cfg.jishuFolder.value)
-        else:
-            cfg.set(cfg.ziliaoFolder, folder)
-            self.ziliaoItem.setFolder("资料: " + cfg.zilaioFolder.value)
-
-    def updateContent(self):
-        self.yuwenItem.setFolder("语文: " + cfg.yuwenFolder.value)
-        self.shuxueItem.setFolder("数学: " + cfg.shuxueFolder.value)
-        self.yingyuItem.setFolder("英语: " + cfg.yingyuFolder.value)
-        self.wuliItem.setFolder("物理: " + cfg.wuliFolder.value)
-        self.huaxueItem.setFolder("化学: " + cfg.huaxueFolder.value)
-        self.shengwuItem.setFolder("生物: " + cfg.shengwuFolder.value)
-        self.zhengzhiItem.setFolder("政治: " + cfg.zhengzhiFolder.value)
-        self.lishiItem.setFolder("历史: " + cfg.lishiFolder.value)
-        self.diliItem.setFolder("地理: " + cfg.diliFolder.value)
-        self.jishuItem.setFolder("技术: " + cfg.jishuFolder.value)
-        self.ziliaoItem.setFolder("资料: " + cfg.ziliaoFolder.value)
-
-
-class ClearCache(QThread):
-    isFinished = pyqtSignal(bool)
-    def __init__(self):
-        super(ClearCache, self).__init__()
-
-    def run(self):
-        if os.path.exists('./Log'):
-            subprocess.call("del /s /q Log", shell=True)
-        if os.path.exists('FastCopy2.ini'):
-            subprocess.call("del /q FastCopy2.ini", shell=True)
-        self.isFinished.emit(True)
-
-
 class HomeInterface(SmoothScrollArea):
     sourceFolderChanged = pyqtSignal(list)
 
@@ -899,66 +609,45 @@ class HomeInterface(SmoothScrollArea):
         else:
             self.scrollWidget.setStyleSheet("background-color: rgb(249, 249, 249);")
 
-        self.sourceGroup = SettingCardGroup(self.tr('源'), self.scrollWidget)
+        self.elementGroup = SettingCardGroup(self.tr('基本'), self.scrollWidget)
+        self.appearanceGroup = SettingCardGroup(self.tr('外观'), self.scrollWidget)
         self.actGroup = SettingCardGroup(self.tr('行为'), self.scrollWidget)
-        self.performanceGroup = SettingCardGroup(self.tr('性能'), self.scrollWidget)
-        self.storageGroup = SettingCardGroup(self.tr('存储'), self.scrollWidget)
         self.advanceGroup = SettingCardGroup(self.tr('高级'), self.scrollWidget)
-        self.optionSourceCard = ComboBoxSettingCard(
-            cfg.IsSourceCloud,
-            FIF.FOLDER,
-            self.tr('源文件夹'),
-            self.tr('选择源文件夹来源'),
-            texts=['云上春晖', '自定义'],
-            parent=self.sourceGroup)
+
+        self.valueCard = SpinBoxSettingCard(
+            cfg.Value,
+            FIF.PEOPLE,
+            self.tr('人数'),
+            self.tr('设置随机总数'),
+            parent=self.elementGroup)
+        self.noRepeatCard = SwitchSettingCard(
+            FIF.COMPLETED,
+            self.tr("去重"),
+            self.tr("设置随机数不重复"),
+            configItem=cfg.NoRepeat,
+            parent=self.elementGroup)
+
+        self.isDarkCard = ComboBoxSettingCard(
+            cfg.IsDark,
+            FIF.BRUSH,
+            self.tr('主题'),
+            self.tr('调整按钮的外观'),
+            texts=['深色', '浅色'],
+            parent=self.appearanceGroup)
+
         self.autoRunCard = SwitchSettingCard(
             FIF.POWER_BUTTON,
             self.tr("开机时启动"),
             self.tr(""),
             configItem=cfg.AutoRun,
             parent=self.actGroup)
-        self.notifyCard = SwitchSettingCard(
-            FIF.RINGER,
-            self.tr("完成后通知"),
+        self.showTimeCard = SwitchSettingCard(
+            FIF.FONT,
+            self.tr("闲时显示时间"),
             self.tr(""),
-            configItem=cfg.Notify,
+            configItem=cfg.ShowTime,
             parent=self.actGroup)
-        self.cloudCard = PushSettingCard(
-            self.tr('选择文件夹'),
-            FIF.CLOUD,
-            self.tr("云上春晖"),
-            cfg.get(cfg.sourceFolder),
-            self.sourceGroup)
-        self.customFolderCard = CustomFolderListSettingCard(
-            self.tr("自定义"),
-            self.tr("展开选项卡以设置"),
-            directory=cfg.sourceFolder.value,
-            parent=self.sourceGroup)
-        self.scanCycleCard = RangeSettingCard(
-            cfg.ScanCycle,
-            FIF.STOP_WATCH,
-            self.tr('扫描周期'),
-            parent=self.performanceGroup)
-        self.concurrentProcessCard = SpinBoxSettingCard(
-            cfg.ConcurrentProcess,
-            FIF.ALIGNMENT,
-            self.tr('并行进程数'),
-            parent=self.performanceGroup)
-        self.bufSizeCard = OptionsSettingCard(
-            cfg.BufSize,
-            FIF.PIE_SINGLE,
-            self.tr('缓冲区大小'),
-            texts=[
-                self.tr('32 MB'), self.tr('64 MB'),
-                self.tr('128 MB'), self.tr('256 MB'),
-                self.tr('512 MB'), self.tr('1 GB')],
-            parent=self.performanceGroup)
-        self.clearCard = PushSettingCard(
-            self.tr('清除'),
-            FIF.BROOM,
-            self.tr('清除缓存'),
-            self.tr(self.getSize()),
-            self.storageGroup)
+
         self.recoverCard = PushSettingCard(
             self.tr('恢复'),
             FIF.CLEAR_SELECTION,
@@ -977,153 +666,53 @@ class HomeInterface(SmoothScrollArea):
             self.tr('帮助'),
             self.tr('提示与常见问题'),
             self.advanceGroup)
+
         self.__initWidget()
 
     def __initWidget(self):
-        self.resize(1000, 800)
+        self.resize(500, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setViewportMargins(0, 0, 0, 0)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.__initLayout()
         self.__connectSignalToSlot()
-        if self.optionSourceCard.comboBox.text() == "云上春晖":
-            self.cloudCard.setDisabled(False)
-            self.customFolderCard.setDisabled(True)
-        else:
-            self.cloudCard.setDisabled(True)
-            self.customFolderCard.setDisabled(False)
 
     def __initLayout(self):
-        self.sourceGroup.addSettingCard(self.optionSourceCard)
-        self.sourceGroup.addSettingCard(self.cloudCard)
-        self.sourceGroup.addSettingCard(self.customFolderCard)
+        self.elementGroup.addSettingCard(self.valueCard)
+        self.elementGroup.addSettingCard(self.noRepeatCard)
+        self.appearanceGroup.addSettingCard(self.isDarkCard)
         self.actGroup.addSettingCard(self.autoRunCard)
-        self.actGroup.addSettingCard(self.notifyCard)
-        self.performanceGroup.addSettingCard(self.scanCycleCard)
-        self.performanceGroup.addSettingCard(self.concurrentProcessCard)
-        self.performanceGroup.addSettingCard(self.bufSizeCard)
-        self.storageGroup.addSettingCard(self.clearCard)
+        self.actGroup.addSettingCard(self.showTimeCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
         self.advanceGroup.addSettingCard(self.helpCard)
+
         self.expandLayout.setSpacing(28)
-        self.expandLayout.setContentsMargins(60, 10, 60, 0)
-        self.expandLayout.addWidget(self.sourceGroup)
+        self.expandLayout.setContentsMargins(25, 20, 25, 20)
+        self.expandLayout.addWidget(self.elementGroup)
+        self.expandLayout.addWidget(self.appearanceGroup)
         self.expandLayout.addWidget(self.actGroup)
-        self.expandLayout.addWidget(self.performanceGroup)
-        self.expandLayout.addWidget(self.storageGroup)
         self.expandLayout.addWidget(self.advanceGroup)
-
-    def noSourceFolderDialog(self):
-        w = MessageBox(
-            '警告',
-            '未设置班级文件夹',
-            self)
-        w.yesButton.setText('设置')
-        w.cancelButton.hide()
-        if w.exec():
-            self.__onCloudCardClicked()
-
-    def getSize(self):
-        try:
-            size = os.path.getsize('FastCopy2.ini')
-        except:
-            size = 0
-        if os.path.exists('./Log'):
-            for root, dirs, files in os.walk('./Log'):
-                try:
-                    size += sum([os.path.getsize(os.path.join(root, name)) for name in files])
-                except:
-                    pass
-        kbSize = float(size / 1024)
-        if kbSize >= 1024*1024:
-            return str(round(kbSize/1024/1024, 1)) + ' GB'
-        elif kbSize >= 1024:
-            return str(round(kbSize/1024, 1)) + ' MB'
-        else:
-            return str(int(kbSize)) + ' KB'
-
-    def onOptionSourceCard(self):
-        if self.optionSourceCard.comboBox.text() == "云上春晖":
-            self.cloudCard.setDisabled(False)
-            self.customFolderCard.setDisabled(True)
-
-            folder = cfg.sourceFolder.value
-            cfg.set(cfg.yuwenFolder, os.path.join(folder, '语文'))
-            cfg.set(cfg.shuxueFolder, os.path.join(folder, '数学'))
-            cfg.set(cfg.yingyuFolder, os.path.join(folder, '英语'))
-            cfg.set(cfg.wuliFolder, os.path.join(folder, '物理'))
-            cfg.set(cfg.huaxueFolder, os.path.join(folder, '化学'))
-            cfg.set(cfg.shengwuFolder, os.path.join(folder, '生物'))
-            cfg.set(cfg.zhengzhiFolder, os.path.join(folder, '政治'))
-            cfg.set(cfg.lishiFolder, os.path.join(folder, '历史'))
-            cfg.set(cfg.diliFolder, os.path.join(folder, '地理'))
-            cfg.set(cfg.jishuFolder, os.path.join(folder, '技术'))
-            cfg.set(cfg.ziliaoFolder, os.path.join(folder, '资料'))
-            self.customFolderCard.updateContent()
-        else:
-            self.cloudCard.setDisabled(True)
-            self.customFolderCard.setDisabled(False)
-
-    def __onCloudCardClicked(self):
-        folder = QFileDialog.getExistingDirectory(self, self.tr("选择文件夹"), "./")
-        if not folder or cfg.get(cfg.sourceFolder) == folder:
-            return
-
-        self.cloudCard.setContent(folder)
-        cfg.set(cfg.sourceFolder, folder)
-        cfg.set(cfg.yuwenFolder, os.path.join(folder, '语文'))
-        cfg.set(cfg.shuxueFolder, os.path.join(folder, '数学'))
-        cfg.set(cfg.yingyuFolder, os.path.join(folder, '英语'))
-        cfg.set(cfg.wuliFolder, os.path.join(folder, '物理'))
-        cfg.set(cfg.huaxueFolder, os.path.join(folder, '化学'))
-        cfg.set(cfg.shengwuFolder, os.path.join(folder, '生物'))
-        cfg.set(cfg.zhengzhiFolder, os.path.join(folder, '政治'))
-        cfg.set(cfg.lishiFolder, os.path.join(folder, '历史'))
-        cfg.set(cfg.diliFolder, os.path.join(folder, '地理'))
-        cfg.set(cfg.jishuFolder, os.path.join(folder, '技术'))
-        cfg.set(cfg.ziliaoFolder, os.path.join(folder, '资料'))
-        self.customFolderCard.updateContent()
-
-    def clearFinished(self):
-        self.clearCacheThread.exit(0)
-        self.clearCard.contentLabel.setText(self.getSize())
-        self.clearCard.button.setText('已清除')
-        QTimer.singleShot(2000, lambda: self.clearCard.button.setText('清除'))
-        self.clearCard.button.setDisabled(False)
-
-    def clearCache(self):
-        w = MessageBox(
-            '清除缓存',
-            '缓存包含日志文件，确定清除吗？',
-            self)
-        w.yesButton.setText('确定')
-        w.cancelButton.setText('取消')
-        if w.exec():
-            self.clearCard.button.setText('清除中')
-            self.clearCard.button.setDisabled(True)
-            self.clearCacheThread = ClearCache()
-            self.clearCacheThread.start()
-            self.clearCacheThread.isFinished.connect(self.clearFinished)
 
     def recoverConfig(self):
         w = MessageBox(
             '恢复默认设置',
-            '确定要重置所有设置吗？',
+            '是否要重置所有设置？',
             self)
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
         if w.exec():
-            self.autoRunCard.setChecked(True)
-            self.notifyCard.setChecked(True)
-            self.scanCycleCard.setValue(10)
-            self.concurrentProcessCard.setValue(3)
+            self.valueCard.setValue(40)
+            self.noRepeatCard.setValue(True)
+            self.isDarkCard.setValue(True)
+            self.autoRunCard.setValue(True)
+            self.showTimeCard.setValue(True)
 
     def openConfig(self):
         w = MessageBox(
             '打开配置文件',
-            '随意修改参数可能导致 Random 无法正常运行，确定继续吗？',
+            '即将打开配置文件，请谨慎操作。',
             self)
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
@@ -1131,9 +720,6 @@ class HomeInterface(SmoothScrollArea):
             os.startfile('config.json')
 
     def __connectSignalToSlot(self):
-        self.optionSourceCard.comboBox.currentTextChanged.connect(self.onOptionSourceCard)
-        self.cloudCard.clicked.connect(self.__onCloudCardClicked)
-        self.clearCard.clicked.connect(self.clearCache)
         self.recoverCard.clicked.connect(self.recoverConfig)
         self.devCard.clicked.connect(self.openConfig)
         self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
@@ -1230,7 +816,7 @@ class AboutInterface(SmoothScrollArea):
             self.imgLabel.setImage(':/BannerDark.png')
         else:
             self.imgLabel.setImage(':/BannerLight.png')
-        self.imgLabel.setFixedSize(401, 150)
+        #self.imgLabel.setFixedSize(401, 150)
 
         self.__initLayout()
         self.__connectSignalToSlot()
@@ -1240,7 +826,7 @@ class AboutInterface(SmoothScrollArea):
         self.aboutGroup.addSettingCard(self.aboutBSCard)
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
-        self.expandLayout.setContentsMargins(60, 10, 60, 0)
+        self.expandLayout.setContentsMargins(25, 20, 25, 20)
         self.expandLayout.addWidget(self.imgLabel)
         self.expandLayout.addWidget(self.aboutGroup)
 
@@ -1480,13 +1066,17 @@ class Main(MSFluentWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        setThemeColor(QColor(15, 120, 62))
-        self.resize(800, 600)
+        setThemeColor(QColor(9, 81, 41))
+        self.resize(480, 650)
         self.setWindowTitle('Random 设置')
         self.setWindowIcon(QIcon('icon.png'))
         self.titleBar.raise_()
-        desktop = QApplication.screens()[0].size()
-        self.move(desktop.width() // 2 - self.width() // 2, desktop.height() // 2 - self.height() // 2)
+        self.titleBar.maxBtn.setVisible(False)
+        self.desktop = QApplication.screens()[0].size()
+        self.move(self.desktop.width() - self.width() - 20, self.desktop.height() - self.height() - 60)
+
+        self.splashScreen = SplashScreen(self.windowIcon(), self)
+        self.splashScreen.raise_()
 
         self.homeInterface = HomeInterface(self)
         self.aboutInterface = AboutInterface(self)
@@ -1527,6 +1117,8 @@ class Main(MSFluentWindow):
             position=NavigationItemPosition.BOTTOM,
         )
         self.navigationInterface.setCurrentItem(self.homeInterface.objectName())
+
+        self.splashScreen.finish()
 
     def onHelpBtn(self):
         os.startfile(os.path.abspath("./Doc/RandomHelp.html"))

@@ -1,0 +1,13 @@
+{
+    "MainWindow": {
+        "AutoRun": true,
+        "IsDark": true,
+        "NoRepeat": true,
+        "ShowTime": true,
+        "Value": 40
+    },
+    "QFluentWidgets": {
+        "ThemeColor": "#ff095129",
+        "ThemeMode": "Dark"
+    }
+}

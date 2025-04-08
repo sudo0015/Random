@@ -6,12 +6,13 @@ from qfluentwidgets import qconfig, QConfig, ConfigItem, OptionsConfigItem, Bool
 
 class Config(QConfig):
     Value = RangeConfigItem("MainWindow", "Value", 40, RangeValidator(2, 999))
-    AutoRun = ConfigItem("MainWindow", "AutoRun", True, BoolValidator())
     NoRepeat = ConfigItem("MainWindow", "NoRepeat", True, BoolValidator())
-    LightTheme = OptionsConfigItem("MainWindow", "LightTheme", False, BoolValidator())
+    AutoRun = ConfigItem("MainWindow", "AutoRun", True, BoolValidator())
+    ShowTime = ConfigItem("MainWindow", "ShowTime", True, BoolValidator())
+    IsDark = OptionsConfigItem("MainWindow", "IsDark", True, BoolValidator())
 
 
 YEAR = "2025"
-VERSION = "4.1.0"
+VERSION = "4.2.1"
 cfg = Config()
 qconfig.load('config.json', cfg)
