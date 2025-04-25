@@ -18,7 +18,7 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     SettingCardGroup, ComboBox, SwitchButton, IndicatorPosition, qconfig, \
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
-    NavigationBar, NavigationBarPushButton, SplashScreen, Slider
+    NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar
 from qfluentwidgets.components.widgets.line_edit import EditLayer
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -697,6 +697,13 @@ class HomeInterface(SmoothScrollArea):
             self.tr('不透明度'),
             self.tr('更改按钮的不透明度'),
             parent=self.appearanceGroup)
+        self.zoomCard = OptionsSettingCard(
+            cfg.dpiScale,
+            FIF.ZOOM,
+            self.tr("界面缩放"),
+            self.tr("调整界面尺寸"),
+            texts=["100%", "125%", "150%", "175%", "200%", self.tr("使用系统设置")],
+            parent=self.appearanceGroup)
 
         self.autoRunCard = SwitchSettingCard(
             FIF.POWER_BUTTON,
@@ -746,6 +753,7 @@ class HomeInterface(SmoothScrollArea):
         self.elementGroup.addSettingCard(self.noRepeatCard)
         self.appearanceGroup.addSettingCard(self.isDarkCard)
         self.appearanceGroup.addSettingCard(self.opacityCard)
+        self.appearanceGroup.addSettingCard(self.zoomCard)
         self.actGroup.addSettingCard(self.autoRunCard)
         self.actGroup.addSettingCard(self.showTimeCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
@@ -784,7 +792,16 @@ class HomeInterface(SmoothScrollArea):
         if w.exec():
             os.startfile('config.json')
 
+    def __showRestartTooltip(self):
+        """ show restart tooltip """
+        InfoBar.warning(
+            self.tr('重启后生效'),
+            '',
+            parent=self.window()
+        )
+
     def __connectSignalToSlot(self):
+        cfg.appRestartSig.connect(self.__showRestartTooltip)
         self.recoverCard.clicked.connect(self.recoverConfig)
         self.devCard.clicked.connect(self.openConfig)
         self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
@@ -1200,9 +1217,13 @@ class Main(MSFluentWindow):
 
 if __name__ == '__main__':
     with Mutex():
-        QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+        if cfg.get(cfg.dpiScale) == "Auto":
+            QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+            QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+            QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+        else:
+            os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+            os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
         if darkdetect.isDark():
             setTheme(Theme.DARK)
         else:

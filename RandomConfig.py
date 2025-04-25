@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from qfluentwidgets import qconfig, QConfig, ConfigItem, OptionsConfigItem, BoolValidator, RangeConfigItem, \
-    RangeValidator
+    RangeValidator, OptionsValidator
 
 
 class Config(QConfig):
@@ -11,9 +11,10 @@ class Config(QConfig):
     AutoRun = ConfigItem("MainWindow", "AutoRun", True, BoolValidator())
     ShowTime = ConfigItem("MainWindow", "ShowTime", True, BoolValidator())
     IsDark = OptionsConfigItem("MainWindow", "IsDark", True, BoolValidator())
+    dpiScale = OptionsConfigItem("MainWindow", "DpiScale", "Auto", OptionsValidator([1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
 
 
 YEAR = "2025"
-VERSION = "4.2.5"
+VERSION = "4.3.0"
 cfg = Config()
 qconfig.load('config.json', cfg)

@@ -15,7 +15,7 @@ from ctypes import windll, byref
 from PyQt5.QtGui import QIcon, QMouseEvent, QCursor
 from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread
 from PyQt5.QtWidgets import QAction, QPushButton, QVBoxLayout, QSystemTrayIcon, QWidget, QApplication
-from qfluentwidgets import RoundMenu, setTheme, Theme
+from qfluentwidgets import RoundMenu, setTheme, Theme, Dialog
 from qfluentwidgets import FluentIcon as FIF
 
 
@@ -43,22 +43,26 @@ class Mutex:
 
 class HotKey(QThread):
     isPressed = pyqtSignal(int)
+    showDialogRequested = pyqtSignal()
 
     def __init__(self):
         super(HotKey, self).__init__()
         self.main_key = 192
+        self.isListening = True
 
     def run(self):
         user32 = windll.user32
-        while True:
+        while self.isListening:
             if not user32.RegisterHotKey(None, 1, win32con.MOD_ALT, self.main_key):
-                print("Error")
+                self.isListening = False
+                self.showDialogRequested.emit()
+                return
             try:
                 msg = MSG()
-                if user32.GetMessageA(byref(msg), None, 0, 0) != 0:
+                ret = user32.PeekMessageA(byref(msg), None, 0, 0, win32con.PM_REMOVE)
+                if ret != 0:
                     if msg.message == win32con.WM_HOTKEY:
-                        if msg.wParam == win32con.MOD_ALT:
-                            self.isPressed.emit(msg.lParam)
+                        self.isPressed.emit(msg.wParam)
             finally:
                 user32.UnregisterHotKey(None, 1)
 
@@ -117,9 +121,22 @@ class Widget(QWidget):
 
         self.hotKey = HotKey()
         self.hotKey.isPressed.connect(self.hotKeyEvent)
+        self.hotKey.showDialogRequested.connect(self.showHotkeyWarning)
         self.hotKey.start()
-
         self.show()
+
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.LeftButton:
+            self._isTracking = True
+        elif e.button() == Qt.RightButton:
+            self._tray_icon_menu.exec(QCursor.pos())
+
+    def mouseMoveEvent(self, e: QMouseEvent):
+        self.move(e.pos() + self.pos())
+
+    def mouseReleaseEvent(self, e: QMouseEvent):
+        if e.button() == Qt.LeftButton:
+            self._isTracking = False
 
     def updateTime(self):
         if not self.isOnRandom:
@@ -164,20 +181,16 @@ class Widget(QWidget):
         QApplication.quit()
         sys.exit()
 
-    def mousePressEvent(self, e: QMouseEvent):
-        if e.button() == Qt.LeftButton:
-            self._isTracking = True
-
-    def mouseMoveEvent(self, e: QMouseEvent):
-        self.move(e.pos() + self.pos())
-
-    def mouseReleaseEvent(self, e: QMouseEvent):
-        if e.button() == Qt.LeftButton:
-            self._isTracking = False
-
     def hotKeyEvent(self, data):
         if data == 12582913:
             self.run()
+
+    def showHotkeyWarning(self):
+        w = Dialog("Random", "检测到热键冲突", self)
+        w.setTitleBarVisible(False)
+        w.yesButton.setText("转到设置")
+        w.cancelButton.setText("忽略")
+        w.exec()
 
     def cancelOnRandom(self):
         self.isOnRandom = False
