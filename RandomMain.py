@@ -75,7 +75,6 @@ class Widget(QWidget):
         self.value = cfg.Value.value
         self.isDark = cfg.IsDark.value
         self.norepeat = cfg.NoRepeat.value
-        self.position = cfg.Position.value
         self.arr = [x for x in range(1, self.value + 1)]
         self.isOnRandom = False
 
@@ -100,19 +99,7 @@ class Widget(QWidget):
         self.updateTime()
 
         self.desktop = QApplication.screens()[0].size()
-        # w.move(self.desktop.width() // 2 - w.width() // 2, self.desktop.height() // 2 - w.height() // 2)
-        if self.position == "TopLeft":
-            self.move(10, 50)
-        elif self.position == "TopCenter":
-            self.move(self.desktop.width() // 2 - self.width() // 2, 50)
-        elif self.position == "TopRight":
-            self.move(self.desktop.width() - 10 - self.width(), 50)
-        elif self.position == "BottomLeft":
-            self.move(10, self.desktop.height() - 100 - self.height())
-        elif self.position == "BottomCenter":
-            self.move(self.desktop.width() // 2 - self.width() // 2, self.desktop.height() - 100 - self.height())
-        elif self.position == "BottomRight":
-            self.move(self.desktop.width() - 10 - self.width(), self.desktop.height() - 100 - self.height())
+        self.moveWidget(cfg.Position.value)
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.button)
@@ -153,6 +140,20 @@ class Widget(QWidget):
         if e.button() == Qt.LeftButton:
             self._isTracking = False
 
+    def moveWidget(self, position):
+        if position == "TopLeft":
+            self.move(10, 50)
+        elif position == "TopCenter":
+            self.move(self.desktop.width() // 2 - self.width() // 2, 50)
+        elif position == "TopRight":
+            self.move(self.desktop.width() - 10 - self.width(), 50)
+        elif position == "BottomLeft":
+            self.move(10, self.desktop.height() - 100 - self.height())
+        elif position == "BottomCenter":
+            self.move(self.desktop.width() // 2 - self.width() // 2, self.desktop.height() - 100 - self.height())
+        elif position == "BottomRight":
+            self.move(self.desktop.width() - 10 - self.width(), self.desktop.height() - 100 - self.height())
+
     def updateTime(self):
         if not self.isOnRandom:
             self.button.setText(QDateTime.currentDateTime().toString('hh:mm'))
@@ -171,17 +172,41 @@ class Widget(QWidget):
 
     def createActions(self):
         self._setting_action = QAction(FIF.SETTING.icon(), "设置", self)
+        self._setting_action.triggered.connect(lambda: subprocess.Popen("RandomSetting.exe", shell=True))
+
+        self._reset_action = QAction(FIF.CANCEL.icon(), "复位", self)
+        self._topleft_action = QAction("左上", self)
+        self._topcenter_action = QAction("上中", self)
+        self._topright_action = QAction("右上", self)
+        self._bottomleft_action = QAction("左下", self)
+        self._bottomcenter_action = QAction("下中", self)
+        self._bottomright_action = QAction("右下", self)
+        self._reset_action.triggered.connect(lambda: self.moveWidget(cfg.Position.value))
+        self._topleft_action.triggered.connect(lambda: self.moveWidget("TopLeft"))
+        self._topcenter_action.triggered.connect(lambda: self.moveWidget("TopCenter"))
+        self._topright_action.triggered.connect(lambda: self.moveWidget("TopRight"))
+        self._bottomleft_action.triggered.connect(lambda: self.moveWidget("BottomLeft"))
+        self._bottomcenter_action.triggered.connect(lambda: self.moveWidget("BottomCenter"))
+        self._bottomright_action.triggered.connect(lambda: self.moveWidget("BottomRight"))
+
+
         self._hide_action = QAction(FIF.REMOVE_FROM.icon(), "隐藏", self)
         self._restore_action = QAction(FIF.ADD_TO.icon(), "显示", self)
-        self._quit_action = QAction(FIF.CLOSE.icon(), "退出", self)
-
-        self._setting_action.triggered.connect(lambda: subprocess.Popen("RandomSetting.exe", shell=True))
         self._hide_action.triggered.connect(self.hide)
         self._restore_action.triggered.connect(self.restoreFromTray)
+
+        self._quit_action = QAction(FIF.CLOSE.icon(), "退出", self)
         self._quit_action.triggered.connect(self.quit)
 
     def createTrayIcon(self):
+        self.subMenu = RoundMenu("移动")
+        self.subMenu.setIcon(FIF.MOVE)
+        self.subMenu.addActions([self._topleft_action, self._topcenter_action, self._topright_action, self._bottomleft_action, self._bottomcenter_action, self._bottomright_action])
+
         self._tray_icon_menu.addAction(self._setting_action)
+        self._tray_icon_menu.addSeparator()
+        self._tray_icon_menu.addAction(self._reset_action)
+        self._tray_icon_menu.addMenu(self.subMenu)
         self._tray_icon_menu.addSeparator()
         self._tray_icon_menu.addAction(self._restore_action)
         self._tray_icon_menu.addAction(self._hide_action)
