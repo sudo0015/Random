@@ -16,6 +16,6 @@ class Config(QConfig):
 
 
 YEAR = "2025"
-VERSION = "4.3.3"
+VERSION = "4.3.4"
 cfg = Config()
 qconfig.load(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'), cfg)

@@ -189,7 +189,12 @@ class Widget(QWidget):
         w.setTitleBarVisible(False)
         w.yesButton.setText("转到设置")
         w.cancelButton.setText("忽略")
-        w.exec()
+        desktop = QApplication.screens()[0].size()
+        w.move(desktop.width() // 2 - w.width() // 2, desktop.height() // 2 - w.height() // 2)
+        if w.exec():
+            subprocess.Popen("RandomSetting.exe", shell=True)
+        else:
+            pass
 
     def cancelOnRandom(self):
         self.isOnRandom = False
