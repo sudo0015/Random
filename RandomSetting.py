@@ -790,7 +790,7 @@ class HomeInterface(SmoothScrollArea):
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
         if w.exec():
-            os.startfile('config.json')
+            os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'))
 
     def __showRestartTooltip(self):
         """ show restart tooltip """

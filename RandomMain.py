@@ -51,20 +51,19 @@ class HotKey(QThread):
         self.isListening = True
 
     def run(self):
-        user32 = windll.user32
         while self.isListening:
-            if not user32.RegisterHotKey(None, 1, win32con.MOD_ALT, self.main_key):
+            if not windll.user32.RegisterHotKey(None, 1, win32con.MOD_ALT, self.main_key):
                 self.isListening = False
                 self.showDialogRequested.emit()
                 return
             try:
                 msg = MSG()
-                ret = user32.PeekMessageA(byref(msg), None, 0, 0, win32con.PM_REMOVE)
-                if ret != 0:
+                if windll.user32.GetMessageA(byref(msg), None, 0, 0) != 0:
                     if msg.message == win32con.WM_HOTKEY:
-                        self.isPressed.emit(msg.wParam)
+                        if msg.wParam == win32con.MOD_ALT:
+                            self.isPressed.emit(msg.lParam)
             finally:
-                user32.UnregisterHotKey(None, 1)
+                windll.user32.UnregisterHotKey(None, 1)
 
 
 class Widget(QWidget):
