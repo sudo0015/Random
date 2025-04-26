@@ -75,16 +75,16 @@ class Widget(QWidget):
         self.value = cfg.Value.value
         self.isDark = cfg.IsDark.value
         self.norepeat = cfg.NoRepeat.value
+        self.position = cfg.Position.value
         self.arr = [x for x in range(1, self.value + 1)]
         self.isOnRandom = False
-
-        self.move(10, 50)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
-        self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.setWindowTitle("Random")
         self.button = QPushButton("Rd")
         self.button.setFixedSize(75, 33)
+        self.setFixedSize(80, 35)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
         if not self.isDark:
             self.button.setStyleSheet(
                 "QPushButton{background-color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
@@ -99,8 +99,24 @@ class Widget(QWidget):
         self.button.clicked.connect(self.run)
         self.updateTime()
 
+        self.desktop = QApplication.screens()[0].size()
+        # w.move(self.desktop.width() // 2 - w.width() // 2, self.desktop.height() // 2 - w.height() // 2)
+        if self.position == "TopLeft":
+            self.move(10, 50)
+        elif self.position == "TopCenter":
+            self.move(self.desktop.width() // 2 - self.width() // 2, 50)
+        elif self.position == "TopRight":
+            self.move(self.desktop.width() - 10 - self.width(), 50)
+        elif self.position == "BottomLeft":
+            self.move(10, self.desktop.height() - 100 - self.height())
+        elif self.position == "BottomCenter":
+            self.move(self.desktop.width() // 2 - self.width() // 2, self.desktop.height() - 100 - self.height())
+        elif self.position == "BottomRight":
+            self.move(self.desktop.width() - 10 - self.width(), self.desktop.height() - 100 - self.height())
+
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.button)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
         self.timer = QTimer()
@@ -189,8 +205,7 @@ class Widget(QWidget):
         w.setTitleBarVisible(False)
         w.yesButton.setText("转到设置")
         w.cancelButton.setText("忽略")
-        desktop = QApplication.screens()[0].size()
-        w.move(desktop.width() // 2 - w.width() // 2, desktop.height() // 2 - w.height() // 2)
+        w.move(self.desktop.width() // 2 - w.width() // 2, self.desktop.height() // 2 - w.height() // 2)
         if w.exec():
             subprocess.Popen("RandomSetting.exe", shell=True)
         else:

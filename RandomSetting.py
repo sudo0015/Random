@@ -717,6 +717,13 @@ class HomeInterface(SmoothScrollArea):
             self.tr(""),
             configItem=cfg.ShowTime,
             parent=self.actGroup)
+        self.positionCard = OptionsSettingCard(
+            cfg.Position,
+            FIF.MOVE,
+            self.tr("位置"),
+            self.tr("按钮启动时的出现位置"),
+            texts=["左上", "上中", "右上", "左下", "下中", "右下"],
+            parent=self.actGroup)
 
         self.recoverCard = PushSettingCard(
             self.tr('恢复'),
@@ -756,6 +763,7 @@ class HomeInterface(SmoothScrollArea):
         self.appearanceGroup.addSettingCard(self.zoomCard)
         self.actGroup.addSettingCard(self.autoRunCard)
         self.actGroup.addSettingCard(self.showTimeCard)
+        self.actGroup.addSettingCard(self.positionCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
         self.advanceGroup.addSettingCard(self.helpCard)
@@ -778,9 +786,11 @@ class HomeInterface(SmoothScrollArea):
             self.valueCard.setValue(40)
             self.noRepeatCard.setValue(True)
             self.isDarkCard.setValue(True)
+            self.opacityCard.setValue(50)
+            self.zoomCard.setValue("Auto")
             self.autoRunCard.setValue(True)
             self.showTimeCard.setValue(True)
-            self.opacityCard.setValue(60)
+            self.positionCard.setValue("TopLeft")
 
     def openConfig(self):
         w = MessageBox(

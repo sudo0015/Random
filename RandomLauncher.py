@@ -4,8 +4,8 @@ import sys
 import subprocess
 import darkdetect
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QApplication, QMainWindow
 from qfluentwidgets import Dialog, setTheme, Theme, setThemeColor
 
 
@@ -13,11 +13,10 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Random")
-        self.setWindowIcon(QIcon(":/icon.png"))
         self.resize(400, 300)
 
 
-class TrayApp:
+class App:
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.main_window = MainWindow()
@@ -52,5 +51,5 @@ if __name__ == '__main__':
         setTheme(Theme.DARK)
     else:
         setTheme(Theme.LIGHT)
-    app = TrayApp()
+    app = App()
     app.run()
