@@ -29,9 +29,9 @@ class TrayApp:
             sys.exit()
 
     def showDialog(self):
-        w = Dialog("Random", "Random已在后台运行。是否重启？")
+        w = Dialog("Random", "Random 已在后台运行")
         w.setTitleBarVisible(False)
-        w.yesButton.setText("确定")
+        w.yesButton.setText("重启")
         w.cancelButton.setText("取消")
         if w.exec():
             subprocess.run("taskkill -f -im Random.exe", shell=True)
