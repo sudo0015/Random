@@ -24,7 +24,7 @@ class App:
         if str(subprocess.run(['tasklist'], capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW, shell=True)).find("RandomMain.exe") != -1:
             self.showDialog()
         else:
-            subprocess.run("RandomMain.exe", shell=True)
+            subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
             sys.exit()
 
     def showDialog(self):
@@ -34,7 +34,7 @@ class App:
         w.cancelButton.setText("取消")
         if w.exec():
             subprocess.run("taskkill -f -im Random.exe", shell=True)
-            subprocess.run("RandomMain.exe", shell=True)
+            subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
             sys.exit()
         else:
             sys.exit()

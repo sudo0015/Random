@@ -700,7 +700,7 @@ class HomeInterface(SmoothScrollArea):
         self.zoomCard = OptionsSettingCard(
             cfg.dpiScale,
             FIF.ZOOM,
-            self.tr("界面缩放"),
+            self.tr("缩放"),
             self.tr("调整界面尺寸"),
             texts=["100%", "125%", "150%", "175%", "200%", self.tr("使用系统设置")],
             parent=self.appearanceGroup)
@@ -1159,13 +1159,13 @@ class Main(MSFluentWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         setThemeColor(QColor(9, 81, 41))
-        self.resize(480, 650)
+        self.resize(470, 630)
         self.setWindowTitle('Random 设置')
         self.setWindowIcon(QIcon(':/icon.png'))
         self.titleBar.raise_()
         self.titleBar.maxBtn.setVisible(False)
         self.desktop = QApplication.screens()[0].size()
-        self.move(self.desktop.width() - self.width() - 20, self.desktop.height() - self.height() - 60)
+        self.move(self.desktop.width() - self.width() - 5, self.desktop.height() - self.height() - 55)
 
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.raise_()

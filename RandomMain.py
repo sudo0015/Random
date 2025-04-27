@@ -81,7 +81,7 @@ class Widget(QWidget):
         self.setWindowTitle("Random")
         self.button = QPushButton("Rd")
         self.button.setFixedSize(75, 33)
-        self.setFixedSize(80, 35)
+        self.setFixedSize(100, 50)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         if not self.isDark:
@@ -103,7 +103,8 @@ class Widget(QWidget):
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.button)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.setAlignment(Qt.AlignCenter)
         self.setLayout(self.layout)
 
         self.timer = QTimer()
