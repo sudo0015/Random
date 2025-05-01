@@ -88,6 +88,7 @@ class SmoothScrollArea(QScrollArea):
 class EditMenu(RoundMenu):
     """ Edit menu """
 
+    # noinspection PyArgumentList
     def createActions(self):
         self.cutAct = QAction(
             FIF.CUT.icon(),
@@ -792,6 +793,8 @@ class HomeInterface(SmoothScrollArea):
             self.showTimeCard.setValue(True)
             self.positionCard.setValue("TopLeft")
 
+            self.positionCard.adjustSize()
+
     def openConfig(self):
         w = MessageBox(
             '打开配置文件',
@@ -1165,7 +1168,7 @@ class Main(MSFluentWindow):
         self.titleBar.raise_()
         self.titleBar.maxBtn.setVisible(False)
         self.desktop = QApplication.screens()[0].size()
-        self.move(self.desktop.width() - self.width() - 5, self.desktop.height() - self.height() - 55)
+        self.move(self.desktop.width() - self.width() - 5, self.desktop.height() - self.height() - 53)
 
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.raise_()

@@ -188,7 +188,6 @@ class HotKey(QThread):
 
 
 class Widget(QWidget):
-    _isTracking = False
     isPressed = pyqtSignal(int)
 
     def __init__(self):
@@ -198,6 +197,7 @@ class Widget(QWidget):
         self.norepeat = cfg.NoRepeat.value
         self.arr = [x for x in range(1, self.value + 1)]
         self.isOnRandom = False
+        self.isTracking = False
 
         self.setWindowTitle("Random")
         self.button = QPushButton("Rd")
@@ -231,6 +231,8 @@ class Widget(QWidget):
         self.timer = QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.updateTime)
+        self.onRandomTimer = QTimer()
+        self.onRandomTimer.timeout.connect(self.cancelOnRandom)
 
         self._restore_action = QAction()
         self._quit_action = QAction()
@@ -251,7 +253,7 @@ class Widget(QWidget):
 
     def mousePressEvent(self, e: QMouseEvent):
         if e.button() == Qt.LeftButton:
-            self._isTracking = True
+            self.isTracking = True
         elif e.button() == Qt.RightButton:
             self._tray_icon_menu.exec(QCursor.pos())
 
@@ -260,7 +262,7 @@ class Widget(QWidget):
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if e.button() == Qt.LeftButton:
-            self._isTracking = False
+            self.isTracking = False
 
     def moveWidget(self, position):
         if position == "TopLeft":
@@ -310,7 +312,6 @@ class Widget(QWidget):
         self._bottomleft_action.triggered.connect(lambda: self.moveWidget("BottomLeft"))
         self._bottomcenter_action.triggered.connect(lambda: self.moveWidget("BottomCenter"))
         self._bottomright_action.triggered.connect(lambda: self.moveWidget("BottomRight"))
-
 
         self._hide_action = QAction(FIF.REMOVE_FROM.icon(), "隐藏", self)
         self._restore_action = QAction(FIF.ADD_TO.icon(), "显示", self)
@@ -369,7 +370,11 @@ class Widget(QWidget):
                 self.arr = [x for x in range(1, self.value + 1)]
 
         self.isOnRandom = True
-        QTimer.singleShot(5000, self.cancelOnRandom)
+        if self.onRandomTimer.isActive():
+            self.onRandomTimer.stop()
+            self.onRandomTimer.start(5000)
+        else:
+            self.onRandomTimer.start(5000)
 
         windowlist = []
         win32gui.EnumWindows(windowEnumerationHandler, windowlist)
