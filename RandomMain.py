@@ -196,6 +196,7 @@ class Widget(QWidget):
         self.isDark = cfg.IsDark.value
         self.norepeat = cfg.NoRepeat.value
         self.arr = [x for x in range(1, self.value + 1)]
+        self.isShowTime = cfg.ShowTime.value
         self.isOnRandom = False
         self.isTracking = False
 
@@ -217,7 +218,6 @@ class Widget(QWidget):
                 "QPushButton:pressed{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}")
         self.button.installEventFilter(self)
         self.button.clicked.connect(self.run)
-        self.updateTime()
 
         self.desktop = QApplication.screens()[0].size()
         self.moveWidget(cfg.Position.value)
@@ -228,11 +228,13 @@ class Widget(QWidget):
         self.layout.setAlignment(Qt.AlignCenter)
         self.setLayout(self.layout)
 
-        self.timer = QTimer()
-        self.timer.start(1000)
-        self.timer.timeout.connect(self.updateTime)
-        self.onRandomTimer = QTimer()
-        self.onRandomTimer.timeout.connect(self.cancelOnRandom)
+        if self.isShowTime:
+            self.updateTime()
+            self.timer = QTimer()
+            self.timer.start(1000)
+            self.timer.timeout.connect(self.updateTime)
+            self.onRandomTimer = QTimer()
+            self.onRandomTimer.timeout.connect(self.cancelOnRandom)
 
         self._restore_action = QAction()
         self._quit_action = QAction()
@@ -278,10 +280,6 @@ class Widget(QWidget):
         elif position == "BottomRight":
             self.move(self.desktop.width() - 10 - self.width(), self.desktop.height() - 100 - self.height())
 
-    def updateTime(self):
-        if not self.isOnRandom:
-            self.button.setText(QDateTime.currentDateTime().toString('hh:mm'))
-
     def restoreFromTray(self):
         if self.isMinimized():
             self.showNormal()
@@ -296,7 +294,9 @@ class Widget(QWidget):
 
     def createActions(self):
         self._setting_action = QAction(FIF.SETTING.icon(), "设置", self)
+        self._help_action = QAction(FIF.HELP.icon(), "帮助", self)
         self._setting_action.triggered.connect(lambda: subprocess.Popen("RandomSetting.exe", shell=True))
+        self._help_action.triggered.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
 
         self._reset_action = QAction(FIF.CANCEL.icon(), "复位", self)
         self._topleft_action = QAction("左上", self)
@@ -327,6 +327,7 @@ class Widget(QWidget):
         self.subMenu.addActions([self._topleft_action, self._topcenter_action, self._topright_action, self._bottomleft_action, self._bottomcenter_action, self._bottomright_action])
 
         self._tray_icon_menu.addAction(self._setting_action)
+        self._tray_icon_menu.addAction(self._help_action)
         self._tray_icon_menu.addSeparator()
         self._tray_icon_menu.addAction(self._reset_action)
         self._tray_icon_menu.addMenu(self.subMenu)
@@ -358,6 +359,10 @@ class Widget(QWidget):
         else:
             pass
 
+    def updateTime(self):
+        if not self.isOnRandom:
+            self.button.setText(QDateTime.currentDateTime().toString('hh:mm'))
+
     def cancelOnRandom(self):
         self.isOnRandom = False
 
@@ -369,12 +374,13 @@ class Widget(QWidget):
             if not self.arr:
                 self.arr = [x for x in range(1, self.value + 1)]
 
-        self.isOnRandom = True
-        if self.onRandomTimer.isActive():
-            self.onRandomTimer.stop()
-            self.onRandomTimer.start(5000)
-        else:
-            self.onRandomTimer.start(5000)
+        if self.isShowTime:
+            self.isOnRandom = True
+            if self.onRandomTimer.isActive():
+                self.onRandomTimer.stop()
+                self.onRandomTimer.start(5000)
+            else:
+                self.onRandomTimer.start(5000)
 
         windowlist = []
         win32gui.EnumWindows(windowEnumerationHandler, windowlist)
