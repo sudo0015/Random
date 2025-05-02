@@ -780,7 +780,7 @@ class HomeInterface(SmoothScrollArea):
         w = MessageBox(
             '恢复默认设置',
             '是否要重置所有设置？',
-            self)
+            self.window())
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
         if w.exec():
@@ -799,7 +799,7 @@ class HomeInterface(SmoothScrollArea):
         w = MessageBox(
             '打开配置文件',
             '即将打开配置文件，请谨慎操作。',
-            self)
+            self.window())
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
         if w.exec():
@@ -926,7 +926,7 @@ class AboutInterface(SmoothScrollArea):
         self.expandLayout.addWidget(self.aboutGroup)
 
     def onAboutESCardClicked(self):
-        w = DetailMessageBox(self)
+        w = DetailMessageBox(self.window())
         if w.exec():
             pass
 
