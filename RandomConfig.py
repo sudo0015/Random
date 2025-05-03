@@ -2,7 +2,7 @@
 
 import os
 from qfluentwidgets import qconfig, QConfig, ConfigItem, OptionsConfigItem, BoolValidator, RangeConfigItem, \
-    RangeValidator, OptionsValidator
+    RangeValidator, OptionsValidator, ConfigValidator
 
 
 class Config(QConfig):
@@ -14,9 +14,10 @@ class Config(QConfig):
     IsDark = OptionsConfigItem("MainWindow", "IsDark", True, BoolValidator())
     dpiScale = OptionsConfigItem("MainWindow", "DpiScale", "Auto", OptionsValidator([1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
     Position = OptionsConfigItem("MainWindow", "Position", "TopLeft", OptionsValidator(["TopLeft", "TopCenter", "TopRight", "BottomLeft", "BottomCenter", "BottomRight"]))
+    RunHotKey = ConfigItem("MainWindow", "RunHotKey", "Ctrl+F1", ConfigValidator())
 
 
 YEAR = "2025"
-VERSION = "4.3.11"
+VERSION = "4.4.0"
 cfg = Config()
 qconfig.load(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'), cfg)

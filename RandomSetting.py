@@ -10,7 +10,7 @@ from webbrowser import open as webopen
 from RandomConfig import cfg, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent
-from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath
+from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QKeySequence
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, \
     QPushButton, QTextBrowser, QTextEdit, QLineEdit, QSpinBox, QScrollArea, \
     QScroller, QAction
@@ -18,8 +18,9 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     SettingCardGroup, ComboBox, SwitchButton, IndicatorPosition, qconfig, \
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
-    NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar
-from qfluentwidgets.components.widgets.line_edit import EditLayer
+    NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
+    BodyLabel
+from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEdit
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
 from qfluentwidgets.window.fluent_window import FluentWindowBase
@@ -246,6 +247,34 @@ class SpinBoxBase:
     def paintEvent(self, e):
         super().paintEvent(e)
         self._drawBorderBottom()
+
+
+class HotkeyEdit(LineEdit):
+    hotkeyChanged = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setPlaceholderText("输入快捷键")
+        self.setClearButtonEnabled(True)
+
+    def contextMenuEvent(self, event):
+        pass
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        modifiers = event.modifiers()
+
+        if key in (Qt.Key_Control, Qt.Key_Alt, Qt.Key_Shift, Qt.Key_Meta):
+            return
+
+        sequence = QKeySequence(modifiers | key).toString()
+        if sequence:
+            self.setText(sequence)
+            self.hotkeyChanged.emit(sequence)
+
+    def mousePressEvent(self, event):
+        self.clear()
+        super().mousePressEvent(event)
 
 
 class InlineSpinBoxBase(SpinBoxBase):
@@ -500,6 +529,47 @@ class PrimaryPushSettingCard(PushSettingCard):
         self.button.setObjectName('primaryButton')
 
 
+class HotkeySettingCard(SettingCard):
+    clicked = pyqtSignal()
+
+    def __init__(self, icon: Union[str, QIcon, FIF], title, content=None,
+                 configItem: ConfigItem = None, parent=None):
+        """
+        Parameters
+        ----------
+        icon: str | QIcon | FluentIconBase
+            the icon to be drawn
+
+        title: str
+            the title of card
+
+        content: str
+            the content of card
+
+        configItem: ConfigItem
+            configuration item operated by the card
+
+        parent: QWidget
+            parent widget
+        """
+        super().__init__(icon, title, content, parent)
+        self.configItem = configItem
+        self.button = TransparentToolButton(FIF.EDIT, self)
+        self.hBoxLayout.addWidget(self.button, 0, Qt.AlignRight)
+        self.hBoxLayout.addSpacing(16)
+        self.button.clicked.connect(self.clicked)
+
+        if configItem:
+            self.setValue(qconfig.get(configItem))
+            configItem.valueChanged.connect(self.setValue)
+
+    def setValue(self, hotkey):
+        if self.configItem:
+            qconfig.set(self.configItem, hotkey)
+
+        self.contentLabel.setText(hotkey)
+
+
 class SpinBoxSettingCard(SettingCard):
     valueChanged = pyqtSignal(int)
 
@@ -670,6 +740,7 @@ class HomeInterface(SmoothScrollArea):
         self.elementGroup = SettingCardGroup(self.tr('通用'), self.scrollWidget)
         self.appearanceGroup = SettingCardGroup(self.tr('外观'), self.scrollWidget)
         self.actGroup = SettingCardGroup(self.tr('行为'), self.scrollWidget)
+        self.hotkeyGroup = SettingCardGroup(self.tr('快捷键'), self.scrollWidget)
         self.advanceGroup = SettingCardGroup(self.tr('高级'), self.scrollWidget)
 
         self.valueCard = SpinBoxSettingCard(
@@ -726,6 +797,13 @@ class HomeInterface(SmoothScrollArea):
             texts=["左上", "上中", "右上", "左下", "下中", "右下"],
             parent=self.actGroup)
 
+        self.runHotKeyCard = HotkeySettingCard(
+            FIF.SEND,
+            self.tr('生成随机数'),
+            cfg.RunHotKey.value,
+            configItem=cfg.RunHotKey,
+            parent=self.hotkeyGroup)
+
         self.recoverCard = PushSettingCard(
             self.tr('恢复'),
             FIF.CLEAR_SELECTION,
@@ -765,6 +843,7 @@ class HomeInterface(SmoothScrollArea):
         self.actGroup.addSettingCard(self.autoRunCard)
         self.actGroup.addSettingCard(self.showTimeCard)
         self.actGroup.addSettingCard(self.positionCard)
+        self.hotkeyGroup.addSettingCard(self.runHotKeyCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
         self.advanceGroup.addSettingCard(self.helpCard)
@@ -774,6 +853,7 @@ class HomeInterface(SmoothScrollArea):
         self.expandLayout.addWidget(self.elementGroup)
         self.expandLayout.addWidget(self.appearanceGroup)
         self.expandLayout.addWidget(self.actGroup)
+        self.expandLayout.addWidget(self.hotkeyGroup)
         self.expandLayout.addWidget(self.advanceGroup)
 
     def recoverConfig(self):
@@ -792,6 +872,7 @@ class HomeInterface(SmoothScrollArea):
             self.autoRunCard.setValue(True)
             self.showTimeCard.setValue(True)
             self.positionCard.setValue("TopLeft")
+            self.runHotKeyCard.setValue("Ctrl+F1")
 
             self.positionCard.adjustSize()
 
@@ -804,6 +885,14 @@ class HomeInterface(SmoothScrollArea):
         w.cancelButton.setText('取消')
         if w.exec():
             os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'))
+
+    def onRunHotkeyCardClicked(self):
+        w = HotkeyMessageBox(self.window())
+        if w.exec():
+            if w.hotkeyEdit.text():
+                self.runHotKeyCard.setValue(w.hotkeyEdit.text())
+            else:
+                pass
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -819,8 +908,11 @@ class HomeInterface(SmoothScrollArea):
         self.devCard.clicked.connect(self.openConfig)
         self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
 
+        self.runHotKeyCard.clicked.connect(self.onRunHotkeyCardClicked)
+
 
 class DetailMessageBox(MessageBoxBase):
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel('关于 Random', self)
@@ -856,6 +948,24 @@ class DetailMessageBox(MessageBoxBase):
 
         self.yesButton.setText('确定')
         self.hideCancelButton()
+
+        self.widget.setMinimumWidth(350)
+
+
+class HotkeyMessageBox(MessageBoxBase):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.titleLabel = SubtitleLabel('设置快捷键', self)
+        self.bodyLabel = BodyLabel('按下键盘按键以设置快捷键', self)
+        self.hotkeyEdit = HotkeyEdit(self)
+
+        self.viewLayout.addWidget(self.titleLabel)
+        self.viewLayout.addWidget(self.bodyLabel)
+        self.viewLayout.addWidget(self.hotkeyEdit)
+
+        self.yesButton.setText('确定')
+        self.cancelButton.setText('取消')
 
         self.widget.setMinimumWidth(350)
 
