@@ -264,6 +264,9 @@ class HotkeyEdit(LineEdit):
         key = event.key()
         modifiers = event.modifiers()
 
+        if modifiers & Qt.MetaModifier or (event.text() and ord(event.text()) > 127):
+            self.clear()
+            return
         if key in (Qt.Key_Control, Qt.Key_Alt, Qt.Key_Shift, Qt.Key_Meta):
             return
 
@@ -803,6 +806,18 @@ class HomeInterface(SmoothScrollArea):
             cfg.RunHotKey.value,
             configItem=cfg.RunHotKey,
             parent=self.hotkeyGroup)
+        self.showHotKeyCard = HotkeySettingCard(
+            FIF.ADD_TO,
+            self.tr('显示'),
+            cfg.ShowHotKey.value,
+            configItem=cfg.ShowHotKey,
+            parent=self.hotkeyGroup)
+        self.hideHotKeyCard = HotkeySettingCard(
+            FIF.REMOVE_FROM,
+            self.tr('隐藏'),
+            cfg.HideHotKey.value,
+            configItem=cfg.HideHotKey,
+            parent=self.hotkeyGroup)
 
         self.recoverCard = PushSettingCard(
             self.tr('恢复'),
@@ -844,6 +859,8 @@ class HomeInterface(SmoothScrollArea):
         self.actGroup.addSettingCard(self.showTimeCard)
         self.actGroup.addSettingCard(self.positionCard)
         self.hotkeyGroup.addSettingCard(self.runHotKeyCard)
+        self.hotkeyGroup.addSettingCard(self.showHotKeyCard)
+        self.hotkeyGroup.addSettingCard(self.hideHotKeyCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
         self.advanceGroup.addSettingCard(self.helpCard)
@@ -873,6 +890,8 @@ class HomeInterface(SmoothScrollArea):
             self.showTimeCard.setValue(True)
             self.positionCard.setValue("TopLeft")
             self.runHotKeyCard.setValue("Ctrl+F1")
+            self.showHotKeyCard.setValue("Ctrl+F2")
+            self.hideHotKeyCard.setValue("Ctrl+F3")
 
             self.positionCard.adjustSize()
 
@@ -886,11 +905,16 @@ class HomeInterface(SmoothScrollArea):
         if w.exec():
             os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'))
 
-    def onRunHotkeyCardClicked(self):
+    def onHotkeyCardClicked(self, index):
         w = HotkeyMessageBox(self.window())
         if w.exec():
             if w.hotkeyEdit.text():
-                self.runHotKeyCard.setValue(w.hotkeyEdit.text())
+                if index == 1:
+                    self.runHotKeyCard.setValue(w.hotkeyEdit.text())
+                elif index == 2:
+                    self.showHotKeyCard.setValue(w.hotkeyEdit.text())
+                elif index == 3:
+                    self.hideHotKeyCard.setValue(w.hotkeyEdit.text())
             else:
                 pass
 
@@ -908,7 +932,9 @@ class HomeInterface(SmoothScrollArea):
         self.devCard.clicked.connect(self.openConfig)
         self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
 
-        self.runHotKeyCard.clicked.connect(self.onRunHotkeyCardClicked)
+        self.runHotKeyCard.clicked.connect(lambda: self.onHotkeyCardClicked(1))
+        self.showHotKeyCard.clicked.connect(lambda: self.onHotkeyCardClicked(2))
+        self.hideHotKeyCard.clicked.connect(lambda: self.onHotkeyCardClicked(3))
 
 
 class DetailMessageBox(MessageBoxBase):
@@ -1294,33 +1320,9 @@ class Main(MSFluentWindow):
             text='帮助',
             onClick=self.onHelpBtn,
             selectable=False,
-            position=NavigationItemPosition.TOP,
-        )
-        self.addSubInterface(self.aboutInterface, FIF.INFO, '关于', FIF.INFO)
-        self.navigationInterface.addItem(
-            routeKey='Show',
-            icon=FIF.ADD_TO,
-            text='显示',
-            onClick=self.onShowBtn,
-            selectable=False,
             position=NavigationItemPosition.BOTTOM,
         )
-        self.navigationInterface.addItem(
-            routeKey='Hide',
-            icon=FIF.REMOVE_FROM,
-            text='隐藏',
-            onClick=self.onHideBtn,
-            selectable=False,
-            position=NavigationItemPosition.BOTTOM,
-        )
-        self.navigationInterface.addItem(
-            routeKey='Exit',
-            icon=FIF.CLOSE,
-            text='退出',
-            onClick=self.onQuitBtn,
-            selectable=False,
-            position=NavigationItemPosition.BOTTOM,
-        )
+        self.addSubInterface(self.aboutInterface, FIF.INFO, '关于', FIF.INFO, NavigationItemPosition.BOTTOM)
         self.navigationInterface.setCurrentItem(self.homeInterface.objectName())
 
         self.splashScreen.finish()
