@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import sys
 import random
 import win32gui
@@ -12,6 +13,7 @@ import RandomResource
 from RandomConfig import cfg
 from ctypes.wintypes import MSG
 from ctypes import windll, byref
+from win32con import MOD_CONTROL, MOD_SHIFT, MOD_ALT
 from PyQt5.QtGui import QIcon, QMouseEvent, QCursor
 from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread
 from PyQt5.QtWidgets import QAction, QPushButton, QVBoxLayout, QSystemTrayIcon, QWidget, QApplication, QHBoxLayout, \
@@ -162,18 +164,41 @@ class Dialog(FramelessDialog, Ui_MessageBox):
         self.setFixedSize(self.size())
 
 
-class HotKey(QThread):
+class HotKeyManager(QThread):
     isPressed = pyqtSignal(int)
     showDialogRequested = pyqtSignal()
 
-    def __init__(self):
-        super(HotKey, self).__init__()
-        self.main_key = 192
+    def __init__(self, hotkey_str):
+        super(HotKeyManager, self).__init__()
+        self.modifiers = 0
+        self.main_key = 0
         self.isListening = True
+        self.parse_hotkey(hotkey_str)
+
+    def parse_hotkey(self, hotkey_str):
+        key_map = {
+            'ctrl': MOD_CONTROL,
+            'shift': MOD_SHIFT,
+            'alt': MOD_ALT
+        }
+
+        parts = re.split(r'\s*\+\s*', hotkey_str.lower())
+        for part in parts[:-1]:
+            if part in key_map:
+                self.modifiers |= key_map[part]
+
+        main_key = parts[-1]
+        if main_key.startswith('f') and main_key[1:].isdigit():
+            self.main_key = 0x70 + int(main_key[1:]) - 1
+        elif len(main_key) == 1:
+            self.main_key = ord(main_key.upper())
+        else:
+            special_keys = {'`': 0xC0, '~': 0xC0, 'esc': 0x1B}
+            self.main_key = special_keys.get(main_key, 0)
 
     def run(self):
         while self.isListening:
-            if not windll.user32.RegisterHotKey(None, 1, win32con.MOD_ALT, self.main_key):
+            if not windll.user32.RegisterHotKey(None, 1, self.modifiers, self.main_key):
                 self.isListening = False
                 self.showDialogRequested.emit()
                 return
@@ -181,7 +206,7 @@ class HotKey(QThread):
                 msg = MSG()
                 if windll.user32.GetMessageA(byref(msg), None, 0, 0) != 0:
                     if msg.message == win32con.WM_HOTKEY:
-                        if msg.wParam == win32con.MOD_ALT:
+                        if msg.wParam == 1:
                             self.isPressed.emit(msg.lParam)
             finally:
                 windll.user32.UnregisterHotKey(None, 1)
@@ -247,7 +272,7 @@ class Widget(QWidget):
         self.tray_icon.show()
         self.tray_icon.activated.connect(self.trayIconActivated)
 
-        self.hotKey = HotKey()
+        self.hotKey = HotKeyManager(cfg.RunHotKey.value)
         self.hotKey.isPressed.connect(self.hotKeyEvent)
         self.hotKey.showDialogRequested.connect(self.showHotkeyWarning)
         self.hotKey.start()
@@ -346,8 +371,7 @@ class Widget(QWidget):
         sys.exit()
 
     def hotKeyEvent(self, data):
-        if data == 12582913:
-            self.run()
+        self.run()
 
     def showHotkeyWarning(self):
         w = Dialog("错误", "检测到热键冲突", self)
