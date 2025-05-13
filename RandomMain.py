@@ -165,11 +165,12 @@ class Dialog(FramelessDialog, Ui_MessageBox):
 
 
 class HotKeyManager(QThread):
-    isPressed = pyqtSignal(int)
-    showDialogRequested = pyqtSignal()
+    isPressed = pyqtSignal(str)
+    showDialogRequested = pyqtSignal(str)
 
-    def __init__(self, hotkey_str):
+    def __init__(self, hotkey_str, hotkey_name):
         super(HotKeyManager, self).__init__()
+        self.hotkeyName = hotkey_name
         self.modifiers = 0
         self.main_key = 0
         self.isListening = True
@@ -188,32 +189,37 @@ class HotKeyManager(QThread):
                 self.modifiers |= key_map[part]
 
         main_key = parts[-1]
-        if main_key.startswith('f') and main_key[1:].isdigit():
+        special_keys = {
+            '`': 0xC0,
+            '~': 0xC0,
+            'esc': 0x1B
+        }
+        if main_key in special_keys:
+            self.main_key = special_keys[main_key]
+        elif main_key.startswith('f') and main_key[1:].isdigit():
             self.main_key = 0x70 + int(main_key[1:]) - 1
         elif len(main_key) == 1:
             self.main_key = ord(main_key.upper())
         else:
-            special_keys = {'`': 0xC0, '~': 0xC0, 'esc': 0x1B}
-            self.main_key = special_keys.get(main_key, 0)
+            self.main_key = 0
 
     def run(self):
         while self.isListening:
             if not windll.user32.RegisterHotKey(None, 1, self.modifiers, self.main_key):
                 self.isListening = False
-                self.showDialogRequested.emit()
+                self.showDialogRequested.emit(self.hotkeyName)
                 return
             try:
                 msg = MSG()
                 if windll.user32.GetMessageA(byref(msg), None, 0, 0) != 0:
                     if msg.message == win32con.WM_HOTKEY:
                         if msg.wParam == 1:
-                            self.isPressed.emit(msg.lParam)
+                            self.isPressed.emit(self.hotkeyName)
             finally:
                 windll.user32.UnregisterHotKey(None, 1)
 
 
-class Widget(QWidget):
-    isPressed = pyqtSignal(int)
+class Main(QWidget):
 
     def __init__(self):
         super().__init__()
@@ -224,6 +230,13 @@ class Widget(QWidget):
         self.isShowTime = cfg.ShowTime.value
         self.isOnRandom = False
         self.isTracking = False
+        self.hotKeyDict = {"Run":"", "Show":"", "Hide":""}
+        if cfg.RunHotKey.value:
+            self.hotKeyDict["Run"] = cfg.RunHotKey.value
+        if cfg.ShowHotKey.value:
+            self.hotKeyDict["Show"] = cfg.ShowHotKey.value
+        if cfg.HideHotKey.value:
+            self.hotKeyDict["Hide"] = cfg.HideHotKey.value
 
         self.setWindowTitle("Random")
         self.button = QPushButton("Rd")
@@ -231,16 +244,7 @@ class Widget(QWidget):
         self.setFixedSize(100, 50)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        if not self.isDark:
-            self.button.setStyleSheet(
-                "QPushButton{background-color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
-                "QPushButton:hover{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
-                "QPushButton:pressed{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}")
-        else:
-            self.button.setStyleSheet(
-                "QPushButton{background-color:rgba(39,39,39," + str(2.55*cfg.Opacity.value) + ");color:rgba(39,39,39," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
-                "QPushButton:hover{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
-                "QPushButton:pressed{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}")
+        self.setBtnStyleSheet()
         self.button.installEventFilter(self)
         self.button.clicked.connect(self.run)
 
@@ -272,10 +276,14 @@ class Widget(QWidget):
         self.tray_icon.show()
         self.tray_icon.activated.connect(self.trayIconActivated)
 
-        self.hotKey = HotKeyManager(cfg.RunHotKey.value)
-        self.hotKey.isPressed.connect(self.hotKeyEvent)
-        self.hotKey.showDialogRequested.connect(self.showHotkeyWarning)
-        self.hotKey.start()
+        self.hotkeyManagers = []
+        for name, key in self.hotKeyDict.items():
+            if key:
+                manager = HotKeyManager(key, name)
+                manager.isPressed.connect(self.hotKeyEvent)
+                manager.showDialogRequested.connect(self.showHotkeyWarning)
+                manager.start()
+                self.hotkeyManagers.append(manager)
         self.show()
 
     def mousePressEvent(self, e: QMouseEvent):
@@ -290,6 +298,18 @@ class Widget(QWidget):
     def mouseReleaseEvent(self, e: QMouseEvent):
         if e.button() == Qt.LeftButton:
             self.isTracking = False
+
+    def setBtnStyleSheet(self):
+        if not self.isDark:
+            self.button.setStyleSheet(
+                "QPushButton{background-color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
+                "QPushButton:hover{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
+                "QPushButton:pressed{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}")
+        else:
+            self.button.setStyleSheet(
+                "QPushButton{background-color:rgba(39,39,39," + str(2.55*cfg.Opacity.value) + ");color:rgba(39,39,39," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
+                "QPushButton:hover{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
+                "QPushButton:pressed{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}")
 
     def moveWidget(self, position):
         if position == "TopLeft":
@@ -365,18 +385,33 @@ class Widget(QWidget):
         self.tray_icon.show()
 
     def quit(self):
+        for manager in self.hotkeyManagers:
+            manager.isListening = False
+            manager.terminate()
         self.tray_icon.hide()
         self.tray_icon.deleteLater()
         QApplication.quit()
         sys.exit()
 
-    def hotKeyEvent(self, data):
-        self.run()
+    def hotKeyEvent(self, hotkeyName):
+        if hotkeyName == "Run":
+            self.run()
+        elif hotkeyName == "Show":
+            self.restoreFromTray()
+        elif hotkeyName == "Hide":
+            self.hide()
 
-    def showHotkeyWarning(self):
-        w = Dialog("错误", "检测到热键冲突", self)
+    def showHotkeyWarning(self, hotkeyName):
+        if hotkeyName == "Run":
+            error = "生成随机数"
+        elif hotkeyName == "Show":
+            error = "显示"
+        elif hotkeyName == "Hide":
+            error = "隐藏"
+        w = Dialog("错误", f"检测到快捷键冲突: {error}", self)
         w.yesButton.setText("转到设置")
         w.cancelButton.setText("忽略")
+        w.setFixedWidth(300)
         w.move(self.desktop.width() // 2 - w.width() // 2, self.desktop.height() // 2 - w.height() // 2)
         if w.exec():
             subprocess.Popen("RandomSetting.exe", shell=True)
@@ -426,7 +461,7 @@ if __name__ == "__main__":
             else:
                 setTheme(Theme.LIGHT)
             app = QApplication(sys.argv)
-            widget = Widget()
+            widget = Main()
             widget.show()
             sys.exit(app.exec())
     else:
