@@ -299,6 +299,9 @@ class Main(QWidget):
         if e.button() == Qt.LeftButton:
             self.isTracking = False
 
+    def closeEvent(self, event):
+        event.ignore()
+
     def setBtnStyleSheet(self):
         if not self.isDark:
             self.button.setStyleSheet(

@@ -1330,15 +1330,6 @@ class Main(MSFluentWindow):
     def onHelpBtn(self):
         os.startfile(os.path.abspath("./Doc/RandomHelp.html"))
 
-    def onShowBtn(self):
-        print("show")
-
-    def onHideBtn(self):
-        print("hide")
-
-    def onQuitBtn(self):
-        print("quit")
-
 
 if __name__ == '__main__':
     with Mutex():
