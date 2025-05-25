@@ -5,6 +5,7 @@ import os
 import darkdetect
 import portalocker
 import RandomResource
+from enum import Enum
 from typing import Union
 from webbrowser import open as webopen
 from RandomConfig import cfg, VERSION, YEAR
@@ -14,8 +15,8 @@ from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QKey
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, \
     QPushButton, QTextBrowser, QTextEdit, QLineEdit, QSpinBox, QScrollArea, \
     QScroller, QAction
-from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, ExpandLayout, \
-    SettingCardGroup, ComboBox, SwitchButton, IndicatorPosition, qconfig, \
+from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, ExpandLayout, MaskDialogBase, \
+    SettingCardGroup, ComboBox, SwitchButton, IndicatorPosition, qconfig, TextWrap, InfoBarIcon, PrimaryPushButton, \
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
     NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
@@ -978,22 +979,219 @@ class DetailMessageBox(MessageBoxBase):
         self.widget.setMinimumWidth(350)
 
 
-class HotkeyMessageBox(MessageBoxBase):
+class InfoIconWidget(QWidget):
+    """ Icon widget """
+
+    def __init__(self, icon: InfoBarIcon, parent=None):
+        super().__init__(parent=parent)
+        self.setFixedSize(36, 36)
+        self.icon = icon
+
+    def paintEvent(self, e):
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.Antialiasing |
+                               QPainter.SmoothPixmapTransform)
+
+        rect = QRectF(10, 10, 15, 15)
+        if self.icon != InfoBarIcon.INFORMATION:
+            drawIcon(self.icon, painter, rect)
+        else:
+            drawIcon(self.icon, painter, rect, indexes=[0], fill=themeColor().name())
+
+
+class WarningBar(QFrame):
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.title = ""
+        self.content = "无效的快捷键"
+        self.icon = InfoBarIcon.WARNING
+
+        self.titleLabel = QLabel(self)
+        self.contentLabel = QLabel(self)
+        self.iconWidget = InfoIconWidget(self.icon)
+
+        self.hBoxLayout = QHBoxLayout(self)
+        self.textLayout = QHBoxLayout()
+        self.widgetLayout = QHBoxLayout()
+
+        self.lightBackgroundColor = QColor(255, 244, 206)
+        self.darkBackgroundColor = QColor(67, 53, 25)
+
+        self.__setQss()
+        self.__initLayout()
+
+    def __initLayout(self):
+        self.hBoxLayout.setContentsMargins(6, 6, 6, 6)
+        self.hBoxLayout.setSizeConstraint(QVBoxLayout.SetMinimumSize)
+        self.textLayout.setSizeConstraint(QHBoxLayout.SetMinimumSize)
+        self.textLayout.setAlignment(Qt.AlignTop)
+        self.textLayout.setContentsMargins(1, 8, 0, 8)
+
+        self.hBoxLayout.setSpacing(0)
+        self.textLayout.setSpacing(5)
+        self.hBoxLayout.addWidget(self.iconWidget, 0, Qt.AlignTop | Qt.AlignLeft)
+        self.textLayout.addWidget(self.titleLabel, 1, Qt.AlignTop)
+        self.titleLabel.setVisible(bool(self.title))
+        self.textLayout.addSpacing(7)
+
+        self.textLayout.addWidget(self.contentLabel, 1, Qt.AlignTop)
+        self.contentLabel.setVisible(bool(self.content))
+        self.hBoxLayout.addLayout(self.textLayout)
+        self.hBoxLayout.addLayout(self.widgetLayout)
+        self.widgetLayout.setSpacing(10)
+        self.hBoxLayout.addSpacing(12)
+
+        self._adjustText()
+
+    def __setQss(self):
+        self.titleLabel.setObjectName('titleLabel')
+        self.contentLabel.setObjectName('contentLabel')
+        if isinstance(self.icon, Enum):
+            self.setProperty('type', self.icon.value)
+
+        FluentStyleSheet.INFO_BAR.apply(self)
+
+    def _adjustText(self):
+        w = 900 if not self.parent() else (self.parent().width() - 50)
+        chars = max(min(w / 10, 120), 30)
+        self.titleLabel.setText(TextWrap.wrap(self.title, chars, False)[0])
+        chars = max(min(w / 9, 120), 30)
+        self.contentLabel.setText(TextWrap.wrap(self.content, chars, False)[0])
+        self.adjustSize()
+
+    def eventFilter(self, obj, e: QEvent):
+        if obj is self.parent():
+            if e.type() in [QEvent.Resize, QEvent.WindowStateChange]:
+                self._adjustText()
+
+        return super().eventFilter(obj, e)
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if self.lightBackgroundColor is None:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+
+        if isDarkTheme():
+            painter.setBrush(self.darkBackgroundColor)
+        else:
+            painter.setBrush(self.lightBackgroundColor)
+
+        rect = self.rect().adjusted(1, 1, -1, -1)
+        painter.drawRoundedRect(rect, 6, 6)
+
+
+class HotKeyMessageBoxBase(MaskDialogBase):
+    """ Message box base """
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.buttonGroup = QFrame(self.widget)
+        self.yesButton = PrimaryPushButton(self.tr('确定'), self.buttonGroup)
+        self.cancelButton = QPushButton(self.tr('取消'), self.buttonGroup)
+
+        self.vBoxLayout = QVBoxLayout(self.widget)
+        self.viewLayout = QVBoxLayout()
+        self.buttonLayout = QHBoxLayout(self.buttonGroup)
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.__setQss()
+        self.__initLayout()
+
+        self.setShadowEffect(60, (0, 10), QColor(0, 0, 0, 50))
+        self.setMaskColor(QColor(0, 0, 0, 76))
+
+        self.yesButton.setAttribute(Qt.WA_LayoutUsesWidgetRect)
+        self.cancelButton.setAttribute(Qt.WA_LayoutUsesWidgetRect)
+
+        self.yesButton.setAttribute(Qt.WA_MacShowFocusRect, False)
+
+        self.yesButton.setFocus()
+        self.buttonGroup.setFixedHeight(81)
+
+        self.cancelButton.clicked.connect(self.__onCancelButtonClicked)
+
+    def __initLayout(self):
+        self._hBoxLayout.removeWidget(self.widget)
+        self._hBoxLayout.addWidget(self.widget, 1, Qt.AlignCenter)
+
+        self.vBoxLayout.setSpacing(0)
+        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+        self.vBoxLayout.addLayout(self.viewLayout, 1)
+        self.vBoxLayout.addWidget(self.buttonGroup, 0, Qt.AlignBottom)
+
+        self.viewLayout.setSpacing(12)
+        self.viewLayout.setContentsMargins(24, 24, 24, 24)
+
+        self.buttonLayout.setSpacing(12)
+        self.buttonLayout.setContentsMargins(24, 24, 24, 24)
+        self.buttonLayout.addWidget(self.yesButton, 1, Qt.AlignVCenter)
+        self.buttonLayout.addWidget(self.cancelButton, 1, Qt.AlignVCenter)
+
+    def __onCancelButtonClicked(self):
+        self.reject()
+
+    def __setQss(self):
+        self.buttonGroup.setObjectName('buttonGroup')
+        self.cancelButton.setObjectName('cancelButton')
+        FluentStyleSheet.DIALOG.apply(self)
+
+    def hideYesButton(self):
+        self.yesButton.hide()
+        self.buttonLayout.insertStretch(0, 1)
+
+    def hideCancelButton(self):
+        self.cancelButton.hide()
+        self.buttonLayout.insertStretch(0, 1)
+
+
+class HotkeyMessageBox(HotKeyMessageBoxBase):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
         self.titleLabel = SubtitleLabel('设置快捷键', self)
         self.bodyLabel = BodyLabel('按下键盘按键以设置快捷键', self)
         self.hotkeyEdit = HotkeyEdit(self)
+        self.warningBar = WarningBar(self)
+        self.warningBar.setFixedHeight(48)
+        self.warningBar.setVisible(False)
 
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addWidget(self.bodyLabel)
         self.viewLayout.addWidget(self.hotkeyEdit)
+        self.viewLayout.addWidget(self.warningBar)
 
-        self.yesButton.setText('确定')
-        self.cancelButton.setText('取消')
-
+        self.yesButton.clicked.connect(self.onYesBtn)
         self.widget.setMinimumWidth(350)
+
+    def validate(self, hotkey: str) -> bool:
+        if not hotkey or not '+' in hotkey:
+            return False
+        else:
+            keys = hotkey.split('+')
+            modifiers = {'Ctrl', 'Alt', 'Shift'}
+            isModifier = any(key in modifiers for key in keys)
+            isRegular = any(key not in modifiers for key in keys)
+            return isModifier and isRegular
+
+    def onYesBtn(self):
+        hotkey = self.hotkeyEdit.text()
+
+        if not self.validate(hotkey):
+            self.warningBar.setVisible(True)
+            self.hotkeyEdit.clear()
+            self.adjustSize()
+            return
+
+        self.warningBar.setVisible(False)
+        self.accept()
 
 
 class AboutInterface(SmoothScrollArea):
