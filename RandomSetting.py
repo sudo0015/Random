@@ -20,7 +20,7 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
     NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
-    BodyLabel
+    BodyLabel, InfoBarPosition
 from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEdit
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -922,8 +922,11 @@ class HomeInterface(SmoothScrollArea):
     def __showRestartTooltip(self):
         """ show restart tooltip """
         InfoBar.warning(
-            self.tr('重启后生效'),
             '',
+            self.tr('重启后生效'),
+            position=InfoBarPosition.BOTTOM,
+            duration=2000,
+            isClosable=False,
             parent=self.window()
         )
 

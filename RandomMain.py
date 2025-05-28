@@ -224,19 +224,18 @@ class Main(QWidget):
     def __init__(self):
         super().__init__()
         self.value = cfg.Value.value
+        self.opacity = cfg.Opacity.value
         self.isDark = cfg.IsDark.value
-        self.norepeat = cfg.NoRepeat.value
-        self.arr = [x for x in range(1, self.value + 1)]
+        self.noRepeat = cfg.NoRepeat.value
+        self.position = cfg.Position.value
         self.isShowTime = cfg.ShowTime.value
+        self.runHotKey = cfg.RunHotKey.value
+        self.showHotKey = cfg.ShowHotKey.value
+        self.hideHotKey = cfg.HideHotKey.value
+
         self.isOnRandom = False
         self.isTracking = False
-        self.hotKeyDict = {"Run":"", "Show":"", "Hide":""}
-        if cfg.RunHotKey.value:
-            self.hotKeyDict["Run"] = cfg.RunHotKey.value
-        if cfg.ShowHotKey.value:
-            self.hotKeyDict["Show"] = cfg.ShowHotKey.value
-        if cfg.HideHotKey.value:
-            self.hotKeyDict["Hide"] = cfg.HideHotKey.value
+        self.arr = [x for x in range(1, self.value + 1)]
 
         self.setWindowTitle("Random")
         self.button = QPushButton("Rd")
@@ -249,21 +248,13 @@ class Main(QWidget):
         self.button.clicked.connect(self.run)
 
         self.desktop = QApplication.screens()[0].size()
-        self.moveWidget(cfg.Position.value)
+        self.moveWidget(self.position)
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.button)
         self.layout.setContentsMargins(10, 10, 10, 10)
         self.layout.setAlignment(Qt.AlignCenter)
         self.setLayout(self.layout)
-
-        if self.isShowTime:
-            self.updateTime()
-            self.timer = QTimer()
-            self.timer.start(1000)
-            self.timer.timeout.connect(self.updateTime)
-            self.onRandomTimer = QTimer()
-            self.onRandomTimer.timeout.connect(self.cancelOnRandom)
 
         self._restore_action = QAction()
         self._quit_action = QAction()
@@ -276,14 +267,10 @@ class Main(QWidget):
         self.tray_icon.show()
         self.tray_icon.activated.connect(self.trayIconActivated)
 
-        self.hotkeyManagers = []
-        for name, key in self.hotKeyDict.items():
-            if key:
-                manager = HotKeyManager(key, name)
-                manager.isPressed.connect(self.hotKeyEvent)
-                manager.showDialogRequested.connect(self.showHotkeyWarning)
-                manager.start()
-                self.hotkeyManagers.append(manager)
+        self.hotSettingTimer = QTimer()
+        self.hotSettingTimer.timeout.connect(self.hotSetting)
+        self.setupTimer()
+        self.setupHotKey()
         self.show()
 
     def mousePressEvent(self, e: QMouseEvent):
@@ -302,15 +289,42 @@ class Main(QWidget):
     def closeEvent(self, event):
         event.ignore()
 
+    def setupTimer(self):
+        if self.isShowTime:
+            self.updateTime()
+            self.timer = QTimer()
+            self.timer.start(1000)
+            self.timer.timeout.connect(self.updateTime)
+            self.onRandomTimer = QTimer()
+            self.onRandomTimer.timeout.connect(self.cancelOnRandom)
+
+    def setupHotKey(self):
+        self.hotKeyDict = {"Run": "", "Show": "", "Hide": ""}
+        if self.runHotKey:
+            self.hotKeyDict["Run"] = self.runHotKey
+        if self.showHotKey:
+            self.hotKeyDict["Show"] = self.showHotKey
+        if self.hideHotKey:
+            self.hotKeyDict["Hide"] = self.hideHotKey
+
+        self.hotkeyManagers = []
+        for name, key in self.hotKeyDict.items():
+            if key:
+                manager = HotKeyManager(key, name)
+                manager.isPressed.connect(self.hotKeyEvent)
+                manager.showDialogRequested.connect(self.showHotkeyWarning)
+                manager.start()
+                self.hotkeyManagers.append(manager)
+
     def setBtnStyleSheet(self):
         if not self.isDark:
             self.button.setStyleSheet(
-                "QPushButton{background-color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");color:rgba(249,249,249," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
+                "QPushButton{background-color:rgba(249,249,249," + str(2.55*self.opacity) + ");color:rgba(249,249,249," + str(2.55*self.opacity) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
                 "QPushButton:hover{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
                 "QPushButton:pressed{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}")
         else:
             self.button.setStyleSheet(
-                "QPushButton{background-color:rgba(39,39,39," + str(2.55*cfg.Opacity.value) + ");color:rgba(39,39,39," + str(2.55*cfg.Opacity.value) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
+                "QPushButton{background-color:rgba(39,39,39," + str(2.55*self.opacity) + ");color:rgba(39,39,39," + str(2.55*self.opacity) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
                 "QPushButton:hover{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
                 "QPushButton:pressed{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}")
 
@@ -343,7 +357,7 @@ class Main(QWidget):
     def createActions(self):
         self._setting_action = QAction(FIF.SETTING.icon(), "设置", self)
         self._help_action = QAction(FIF.HELP.icon(), "帮助", self)
-        self._setting_action.triggered.connect(lambda: subprocess.Popen("RandomSetting.exe", shell=True))
+        self._setting_action.triggered.connect(self.onSettingAction)
         self._help_action.triggered.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
 
         self._reset_action = QAction(FIF.CANCEL.icon(), "复位", self)
@@ -431,7 +445,7 @@ class Main(QWidget):
     def run(self):
         temp = random.choice(self.arr)
         self.button.setText(str(temp))
-        if self.norepeat:
+        if self.noRepeat:
             self.arr.remove(temp)
             if not self.arr:
                 self.arr = [x for x in range(1, self.value + 1)]
@@ -451,6 +465,36 @@ class Main(QWidget):
                 win32gui.ShowWindow(i[0], 4)
                 win32gui.SetForegroundWindow(i[0])
                 break
+
+    def onSettingAction(self):
+        subprocess.Popen("RandomSetting.exe", shell=True)
+        self.hotSettingTimer.start(2000)
+
+    def hotSetting(self):
+        windowlist = []
+        win32gui.EnumWindows(windowEnumerationHandler, windowlist)
+        for i in windowlist:
+            if not "Random 设置" in i[1]:
+                self.hotSettingTimer.stop()
+
+        if self.value != cfg.Value.value:
+            self.value = cfg.Value.value
+            self.arr = [x for x in range(1, self.value + 1)]
+        if self.opacity != cfg.Opacity.value:
+            self.opacity = cfg.Opacity.value
+            self.setBtnStyleSheet()
+        if self.isDark != cfg.IsDark.value:
+            self.isDark = cfg.IsDark.value
+            self.setBtnStyleSheet()
+        if self.noRepeat != cfg.NoRepeat.value:
+            self.noRepeat = cfg.NoRepeat.value
+        if self.position != cfg.Position.value:
+            self.position = cfg.Position.value
+            self.moveWidget(self.position)
+        if self.isShowTime != cfg.ShowTime.value:
+            self.isShowTime = cfg.ShowTime.value
+            self.button.setText("Rd")
+            self.setupTimer()
 
 
 if __name__ == "__main__":
