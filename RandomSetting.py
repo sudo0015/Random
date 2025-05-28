@@ -1159,6 +1159,7 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
         self.titleLabel = SubtitleLabel('设置快捷键', self)
         self.bodyLabel = BodyLabel('按下键盘按键以设置快捷键', self)
         self.hotkeyEdit = HotkeyEdit(self)
+        self.hotkeyEdit.textChanged.connect(self.onTextChange)
         self.warningBar = WarningBar(self)
         self.warningBar.setFixedHeight(48)
         self.warningBar.setVisible(False)
@@ -1171,8 +1172,12 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
         self.yesButton.clicked.connect(self.onYesBtn)
         self.widget.setMinimumWidth(350)
 
+    def onTextChange(self):
+        if self.warningBar.isVisible():
+            self.warningBar.setVisible(False)
+
     def validate(self, hotkey: str) -> bool:
-        if not hotkey or not '+' in hotkey:
+        if not hotkey:
             return False
         else:
             keys = hotkey.split('+')
@@ -1182,12 +1187,9 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
             return isModifier and isRegular
 
     def onYesBtn(self):
-        hotkey = self.hotkeyEdit.text()
-
-        if not self.validate(hotkey):
-            self.warningBar.setVisible(True)
+        if not self.validate(self.hotkeyEdit.text()):
             self.hotkeyEdit.clear()
-            self.adjustSize()
+            self.warningBar.setVisible(True)
             return
 
         self.warningBar.setVisible(False)
