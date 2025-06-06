@@ -837,7 +837,7 @@ class HomeInterface(SmoothScrollArea):
             self.tr('帮助'),
             self.tr('提示与常见问题'),
             self.advanceGroup)
-        self.warningBar = WarningBar(title="", content="所有设置均在重启后生效", parent=self)
+        self.warningBar = WarningBar(title="", content="设置需在重启后生效", parent=self)
         self.restartBtn = PushButton("立即重启", self.warningBar)
         self.restartBtn.clicked.connect(self.onRestartBtn)
         self.warningBar.addWidget(self.restartBtn)
@@ -924,8 +924,8 @@ class HomeInterface(SmoothScrollArea):
                 pass
 
     def onRestartBtn(self):
-        subprocess.Popen(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
-        subprocess.Popen(["RandomMain.exe", "--force-start"], shell=True)
+        subprocess.run(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
+        subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -1552,14 +1552,14 @@ class Main(MSFluentWindow):
     def onCloseBtn(self):
         w = MessageBox(
             '重启 Random',
-            '所作出的更改将在重启后生效，是否立即重启？',
+            '所作出的更改将在重启后生效',
             self.window())
-        w.yesButton.setText('确定')
-        w.cancelButton.setText('取消')
+        w.yesButton.setText('立即重启')
+        w.cancelButton.setText('暂不重启')
         if w.exec():
             self.hide()
-            subprocess.Popen(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
-            subprocess.Popen(["RandomMain.exe", "--force-start"], shell=True)
+            subprocess.run(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
+            subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
             sys.exit()
         else:
             self.hide()
