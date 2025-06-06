@@ -267,8 +267,6 @@ class Main(QWidget):
         self.tray_icon.show()
         self.tray_icon.activated.connect(self.trayIconActivated)
 
-        self.hotSettingTimer = QTimer()
-        self.hotSettingTimer.timeout.connect(self.hotSetting)
         self.setupTimer()
         self.setupHotKey()
         self.show()
@@ -357,7 +355,7 @@ class Main(QWidget):
     def createActions(self):
         self._setting_action = QAction(FIF.SETTING.icon(), "设置", self)
         self._help_action = QAction(FIF.HELP.icon(), "帮助", self)
-        self._setting_action.triggered.connect(self.onSettingAction)
+        self._setting_action.triggered.connect(lambda: subprocess.Popen("RandomSetting.exe", shell=True))
         self._help_action.triggered.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
 
         self._reset_action = QAction(FIF.CANCEL.icon(), "复位", self)
@@ -465,36 +463,6 @@ class Main(QWidget):
                 win32gui.ShowWindow(i[0], 4)
                 win32gui.SetForegroundWindow(i[0])
                 break
-
-    def onSettingAction(self):
-        subprocess.Popen("RandomSetting.exe", shell=True)
-        self.hotSettingTimer.start(2000)
-
-    def hotSetting(self):
-        windowlist = []
-        win32gui.EnumWindows(windowEnumerationHandler, windowlist)
-        for i in windowlist:
-            if not "Random 设置" in i[1]:
-                self.hotSettingTimer.stop()
-
-        if self.value != cfg.Value.value:
-            self.value = cfg.Value.value
-            self.arr = [x for x in range(1, self.value + 1)]
-        if self.opacity != cfg.Opacity.value:
-            self.opacity = cfg.Opacity.value
-            self.setBtnStyleSheet()
-        if self.isDark != cfg.IsDark.value:
-            self.isDark = cfg.IsDark.value
-            self.setBtnStyleSheet()
-        if self.noRepeat != cfg.NoRepeat.value:
-            self.noRepeat = cfg.NoRepeat.value
-        if self.position != cfg.Position.value:
-            self.position = cfg.Position.value
-            self.moveWidget(self.position)
-        if self.isShowTime != cfg.ShowTime.value:
-            self.isShowTime = cfg.ShowTime.value
-            self.button.setText("Rd")
-            self.setupTimer()
 
 
 if __name__ == "__main__":

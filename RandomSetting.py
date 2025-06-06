@@ -20,7 +20,7 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
     NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
-    BodyLabel, InfoBarPosition
+    BodyLabel, InfoBarPosition, PushButton
 from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEdit
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -570,7 +570,6 @@ class HotkeySettingCard(SettingCard):
     def setValue(self, hotkey):
         if self.configItem:
             qconfig.set(self.configItem, hotkey)
-
         self.contentLabel.setText(hotkey)
 
 
@@ -716,7 +715,6 @@ class ComboBoxSettingCard(SettingCard):
         configItem.valueChanged.connect(self.setValue)
 
     def _onCurrentIndexChanged(self, index: int):
-
         qconfig.set(self.configItem, self.comboBox.itemData(index))
 
     def setValue(self, value):
@@ -838,6 +836,10 @@ class HomeInterface(SmoothScrollArea):
             self.tr('帮助'),
             self.tr('提示与常见问题'),
             self.advanceGroup)
+        self.warningBar = WarningBar(title="", content="所有设置均在重启后生效", parent=self)
+        self.restartBtn = PushButton("立即重启", self.warningBar)
+        self.restartBtn.clicked.connect(self.onRestartBtn)
+        self.warningBar.addWidget(self.restartBtn)
 
         self.__initWidget()
 
@@ -865,6 +867,7 @@ class HomeInterface(SmoothScrollArea):
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
         self.advanceGroup.addSettingCard(self.helpCard)
+        self.advanceGroup.addSettingCard(self.warningBar)
 
         self.expandLayout.setSpacing(28)
         self.expandLayout.setContentsMargins(25, 20, 25, 20)
@@ -918,6 +921,9 @@ class HomeInterface(SmoothScrollArea):
                     self.hideHotKeyCard.setValue(w.hotkeyEdit.text())
             else:
                 pass
+
+    def onRestartBtn(self):
+        print("111")
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -1004,14 +1010,16 @@ class InfoIconWidget(QWidget):
 
 class WarningBar(QFrame):
 
-    def __init__(self, parent=None):
+    def __init__(self, title: str, content: str, parent=None):
         super().__init__(parent=parent)
-        self.title = ""
-        self.content = "无效的快捷键"
+        self.title = title
+        self.content = content
         self.icon = InfoBarIcon.WARNING
 
         self.titleLabel = QLabel(self)
         self.contentLabel = QLabel(self)
+        self.titleLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.contentLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.iconWidget = InfoIconWidget(self.icon)
 
         self.hBoxLayout = QHBoxLayout(self)
@@ -1034,12 +1042,13 @@ class WarningBar(QFrame):
         self.hBoxLayout.setSpacing(0)
         self.textLayout.setSpacing(5)
         self.hBoxLayout.addWidget(self.iconWidget, 0, Qt.AlignTop | Qt.AlignLeft)
-        self.textLayout.addWidget(self.titleLabel, 1, Qt.AlignTop)
-        self.titleLabel.setVisible(bool(self.title))
-        self.textLayout.addSpacing(7)
 
-        self.textLayout.addWidget(self.contentLabel, 1, Qt.AlignTop)
+        self.titleLabel.setVisible(bool(self.title))
         self.contentLabel.setVisible(bool(self.content))
+        self.textLayout.addWidget(self.titleLabel, 1, Qt.AlignLeft | Qt.AlignTop)
+        self.textLayout.addSpacing(7)
+        self.textLayout.addWidget(self.contentLabel, 1, Qt.AlignLeft | Qt.AlignTop)
+
         self.hBoxLayout.addLayout(self.textLayout)
         self.hBoxLayout.addLayout(self.widgetLayout)
         self.widgetLayout.setSpacing(10)
@@ -1062,6 +1071,11 @@ class WarningBar(QFrame):
         chars = max(min(w / 9, 120), 30)
         self.contentLabel.setText(TextWrap.wrap(self.content, chars, False)[0])
         self.adjustSize()
+
+    def addWidget(self, widget: QWidget, stretch=0):
+        """ add widget to info bar """
+        self.widgetLayout.addSpacing(6)
+        self.widgetLayout.addWidget(widget, stretch, Qt.AlignLeft | Qt.AlignTop)
 
     def eventFilter(self, obj, e: QEvent):
         if obj is self.parent():
@@ -1163,7 +1177,7 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
         self.bodyLabel = BodyLabel('按下键盘按键以设置快捷键', self)
         self.hotkeyEdit = HotkeyEdit(self)
         self.hotkeyEdit.textChanged.connect(self.onTextChange)
-        self.warningBar = WarningBar(self)
+        self.warningBar = WarningBar(title="", content="无效的快捷键", parent=self)
         self.warningBar.setFixedHeight(48)
         self.warningBar.setVisible(False)
 
