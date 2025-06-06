@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import sys
 import os
+import sys
+import subprocess
 import darkdetect
 import portalocker
 import RandomResource
@@ -923,7 +924,8 @@ class HomeInterface(SmoothScrollArea):
                 pass
 
     def onRestartBtn(self):
-        print("111")
+        subprocess.Popen(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
+        subprocess.Popen(["RandomMain.exe", "--force-start"], shell=True)
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -1306,7 +1308,6 @@ class TitleBarBase(QWidget):
 
         self.minBtn.clicked.connect(self.window().showMinimized)
         self.maxBtn.clicked.connect(self.__toggleMaxState)
-        self.closeBtn.clicked.connect(self.window().close)
 
         self.window().installEventFilter(self)
 
@@ -1522,6 +1523,7 @@ class Main(MSFluentWindow):
         self.titleBar.maxBtn.setVisible(False)
         self.desktop = QApplication.screens()[0].size()
         self.move(self.desktop.width() - self.width() - 5, self.desktop.height() - self.height() - 53)
+        self.titleBar.closeBtn.clicked.connect(self.onCloseBtn)
 
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.raise_()
@@ -1546,6 +1548,22 @@ class Main(MSFluentWindow):
 
     def onHelpBtn(self):
         os.startfile(os.path.abspath("./Doc/RandomHelp.html"))
+
+    def onCloseBtn(self):
+        w = MessageBox(
+            '重启 Random',
+            '所作出的更改将在重启后生效，是否立即重启？',
+            self.window())
+        w.yesButton.setText('确定')
+        w.cancelButton.setText('取消')
+        if w.exec():
+            self.hide()
+            subprocess.Popen(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
+            subprocess.Popen(["RandomMain.exe", "--force-start"], shell=True)
+            sys.exit()
+        else:
+            self.hide()
+            sys.exit()
 
 
 if __name__ == '__main__':
