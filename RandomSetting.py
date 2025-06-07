@@ -11,7 +11,7 @@ from typing import Union
 from webbrowser import open as webopen
 from RandomConfig import cfg, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent, QThread
 from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QKeySequence
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, \
     QPushButton, QTextBrowser, QTextEdit, QLineEdit, QSpinBox, QScrollArea, \
@@ -726,6 +726,18 @@ class ComboBoxSettingCard(SettingCard):
         qconfig.set(self.configItem, value)
 
 
+class RestartThread(QThread):
+    restartFinished = pyqtSignal(bool)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    def run(self):
+        subprocess.run(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
+        subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
+        self.restartFinished.emit(True)
+
+
 class HomeInterface(SmoothScrollArea):
     sourceFolderChanged = pyqtSignal(list)
 
@@ -837,7 +849,7 @@ class HomeInterface(SmoothScrollArea):
             self.tr('帮助'),
             self.tr('提示与常见问题'),
             self.advanceGroup)
-        self.warningBar = WarningBar(title="", content="设置需在重启后生效", parent=self)
+        self.warningBar = WarningBar(title="", content="设置需在软件重启后生效", parent=self)
         self.restartBtn = PushButton("立即重启", self.warningBar)
         self.restartBtn.clicked.connect(self.onRestartBtn)
         self.warningBar.addWidget(self.restartBtn)
@@ -849,7 +861,9 @@ class HomeInterface(SmoothScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setViewportMargins(0, 0, 0, 0)
         self.setWidget(self.scrollWidget)
+        self.restartThread = RestartThread()
         self.setWidgetResizable(True)
+        self.restartThreadRunning = False
         self.__initLayout()
         self.__connectSignalToSlot()
 
@@ -923,16 +937,39 @@ class HomeInterface(SmoothScrollArea):
             else:
                 pass
 
+    def setupRestartThread(self):
+        self.restartThread.restartFinished.connect(self.restartThreadFinished)
+        self.restartThreadRunning = True
+
+    def startRestartThread(self):
+        if self.restartThreadRunning:
+            self.restartThread.start()
+        else:
+            self.setupRestartThread()
+            self.restartThread.start()
+
+    def restartThreadFinished(self):
+        InfoBar.success(
+            '',
+            self.tr('Random 已重启'),
+            position=InfoBarPosition.TOP,
+            duration=2000,
+            isClosable=False,
+            parent=self.window()
+        )
+        self.restartThread.quit()
+        self.restartThreadRunning = False
+
     def onRestartBtn(self):
-        subprocess.run(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
-        subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
+        self.setupRestartThread()
+        self.startRestartThread()
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
         InfoBar.warning(
             '',
-            self.tr('重启后生效'),
-            position=InfoBarPosition.BOTTOM,
+            self.tr('软件重启后生效'),
+            position=InfoBarPosition.TOP,
             duration=2000,
             isClosable=False,
             parent=self.window()
@@ -1552,7 +1589,7 @@ class Main(MSFluentWindow):
     def onCloseBtn(self):
         w = MessageBox(
             '重启 Random',
-            '所作出的更改将在重启后生效',
+            '所作出的更改将在软件重启后生效',
             self.window())
         w.yesButton.setText('立即重启')
         w.cancelButton.setText('暂不重启')
