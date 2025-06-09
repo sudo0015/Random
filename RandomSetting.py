@@ -739,7 +739,6 @@ class RestartThread(QThread):
 
 
 class HomeInterface(SmoothScrollArea):
-    sourceFolderChanged = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -747,10 +746,16 @@ class HomeInterface(SmoothScrollArea):
         self.stateTooltip = None
         self.expandLayout = ExpandLayout(self.scrollWidget)
         self.enableTransparentBackground()
+        self.settingLabel = QLabel(self.tr("设置"), self)
+        self.applyBtn = PrimaryPushButton("应用", self)
+        self.applyBtn.setFixedWidth(80)
+        self.applyBtn.clicked.connect(self.onApplyBtn)
         if darkdetect.isDark():
             self.scrollWidget.setStyleSheet("background-color: rgb(39, 39, 39);")
+            self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent; color: white;")
         else:
             self.scrollWidget.setStyleSheet("background-color: rgb(249, 249, 249);")
+            self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent;")
 
         self.elementGroup = SettingCardGroup(self.tr('通用'), self.scrollWidget)
         self.appearanceGroup = SettingCardGroup(self.tr('外观'), self.scrollWidget)
@@ -849,17 +854,13 @@ class HomeInterface(SmoothScrollArea):
             self.tr('帮助'),
             self.tr('提示与常见问题'),
             self.advanceGroup)
-        self.warningBar = WarningBar(title="", content="设置需在软件重启后生效", parent=self)
-        self.restartBtn = PushButton("立即重启", self.warningBar)
-        self.restartBtn.clicked.connect(self.onRestartBtn)
-        self.warningBar.addWidget(self.restartBtn)
 
         self.__initWidget()
 
     def __initWidget(self):
         self.resize(500, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setViewportMargins(0, 0, 0, 0)
+        self.setViewportMargins(0, 60, 0, 5)
         self.setWidget(self.scrollWidget)
         self.restartThread = RestartThread()
         self.setWidgetResizable(True)
@@ -868,6 +869,9 @@ class HomeInterface(SmoothScrollArea):
         self.__connectSignalToSlot()
 
     def __initLayout(self):
+        self.settingLabel.move(20, 10)
+        self.applyBtn.move(285, 15)
+
         self.elementGroup.addSettingCard(self.valueCard)
         self.elementGroup.addSettingCard(self.noRepeatCard)
         self.appearanceGroup.addSettingCard(self.isDarkCard)
@@ -882,7 +886,6 @@ class HomeInterface(SmoothScrollArea):
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
         self.advanceGroup.addSettingCard(self.helpCard)
-        self.advanceGroup.addSettingCard(self.warningBar)
 
         self.expandLayout.setSpacing(28)
         self.expandLayout.setContentsMargins(25, 20, 25, 20)
@@ -960,9 +963,16 @@ class HomeInterface(SmoothScrollArea):
         self.restartThread.quit()
         self.restartThreadRunning = False
 
-    def onRestartBtn(self):
-        self.setupRestartThread()
-        self.startRestartThread()
+    def onApplyBtn(self):
+        w = MessageBox(
+            '重启 Random',
+            '重启 Random 以应用更改',
+            self.window())
+        w.yesButton.setText('立即重启')
+        w.cancelButton.setText('暂不重启')
+        if w.exec():
+            self.setupRestartThread()
+            self.startRestartThread()
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -1345,8 +1355,13 @@ class TitleBarBase(QWidget):
 
         self.minBtn.clicked.connect(self.window().showMinimized)
         self.maxBtn.clicked.connect(self.__toggleMaxState)
+        self.closeBtn.clicked.connect(self.quit)
 
         self.window().installEventFilter(self)
+
+    def quit(self):
+        self.hide()
+        sys.exit()
 
     def eventFilter(self, obj, e):
         if obj is self.window():
@@ -1553,14 +1568,13 @@ class Main(MSFluentWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         setThemeColor(QColor(9, 81, 41))
-        self.resize(470, 630)
+        self.setFixedSize(470, 630)
         self.setWindowTitle('Random 设置')
         self.setWindowIcon(QIcon(':/icon.png'))
         self.titleBar.raise_()
         self.titleBar.maxBtn.setVisible(False)
         self.desktop = QApplication.screens()[0].size()
         self.move(self.desktop.width() - self.width() - 5, self.desktop.height() - self.height() - 53)
-        self.titleBar.closeBtn.clicked.connect(self.onCloseBtn)
 
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.raise_()
@@ -1585,22 +1599,6 @@ class Main(MSFluentWindow):
 
     def onHelpBtn(self):
         os.startfile(os.path.abspath("./Doc/RandomHelp.html"))
-
-    def onCloseBtn(self):
-        w = MessageBox(
-            '重启 Random',
-            '所作出的更改将在软件重启后生效',
-            self.window())
-        w.yesButton.setText('立即重启')
-        w.cancelButton.setText('暂不重启')
-        if w.exec():
-            self.hide()
-            subprocess.run(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
-            subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
-            sys.exit()
-        else:
-            self.hide()
-            sys.exit()
 
 
 if __name__ == '__main__':
