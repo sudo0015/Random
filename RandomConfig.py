@@ -11,7 +11,7 @@ class Config(QConfig):
     NoRepeat = ConfigItem("MainWindow", "NoRepeat", True, BoolValidator())
     AutoRun = ConfigItem("MainWindow", "AutoRun", True, BoolValidator())
     ShowTime = ConfigItem("MainWindow", "ShowTime", True, BoolValidator())
-    IsDark = OptionsConfigItem("MainWindow", "IsDark", True, BoolValidator())
+    Theme = OptionsConfigItem("MainWindow", "Theme", "Auto", OptionsValidator(["Light", "Dark", "Auto"]))
     dpiScale = OptionsConfigItem("MainWindow", "DpiScale", "Auto", OptionsValidator([1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
     Position = OptionsConfigItem("MainWindow", "Position", "TopLeft", OptionsValidator(["TopLeft", "TopCenter", "TopRight", "BottomLeft", "BottomCenter", "BottomRight"]))
     RunHotKey = ConfigItem("MainWindow", "RunHotKey", "Ctrl+F1", ConfigValidator())
@@ -20,6 +20,6 @@ class Config(QConfig):
 
 
 YEAR = "2025"
-VERSION = "4.6.4"
+VERSION = "4.6.5"
 cfg = Config()
 qconfig.load(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'), cfg)

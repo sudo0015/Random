@@ -7,10 +7,10 @@ import random
 import win32gui
 import win32con
 import subprocess
-import darkdetect
 import portalocker
 import RandomResource
 from RandomConfig import cfg
+from darkdetect import isDark
 from ctypes.wintypes import MSG
 from ctypes import windll, byref
 from win32con import MOD_CONTROL, MOD_SHIFT, MOD_ALT
@@ -225,7 +225,7 @@ class Main(QWidget):
         super().__init__()
         self.value = cfg.Value.value
         self.opacity = cfg.Opacity.value
-        self.isDark = cfg.IsDark.value
+        self.theme = cfg.Theme.value
         self.noRepeat = cfg.NoRepeat.value
         self.position = cfg.Position.value
         self.isShowTime = cfg.ShowTime.value
@@ -315,12 +315,23 @@ class Main(QWidget):
                 self.hotkeyManagers.append(manager)
 
     def setBtnStyleSheet(self):
-        if not self.isDark:
+        if self.theme == "Light":
+            theme = True
+        elif self.theme == "Dark":
+            theme = False
+        else:
+            if isDark():
+                theme = False
+            else:
+                theme = True
+        if theme:
+            """Light Theme"""
             self.button.setStyleSheet(
                 "QPushButton{background-color:rgba(249,249,249," + str(2.55*self.opacity) + ");color:rgba(249,249,249," + str(2.55*self.opacity) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
                 "QPushButton:hover{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
                 "QPushButton:pressed{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}")
         else:
+            """Dark Theme"""
             self.button.setStyleSheet(
                 "QPushButton{background-color:rgba(39,39,39," + str(2.55*self.opacity) + ");color:rgba(39,39,39," + str(2.55*self.opacity) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
                 "QPushButton:hover{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
@@ -373,8 +384,8 @@ class Main(QWidget):
         self._bottomcenter_action.triggered.connect(lambda: self.moveWidget("BottomCenter"))
         self._bottomright_action.triggered.connect(lambda: self.moveWidget("BottomRight"))
 
-        self._hide_action = QAction(FIF.REMOVE_FROM.icon(), "隐藏", self)
-        self._restore_action = QAction(FIF.ADD_TO.icon(), "显示", self)
+        self._hide_action = QAction(FIF.REMOVE_FROM.icon(), "隐藏", shortcut=self.hideHotKey, parent=self)
+        self._restore_action = QAction(FIF.ADD_TO.icon(), "显示", shortcut=self.showHotKey, parent=self)
         self._hide_action.triggered.connect(self.hide)
         self._restore_action.triggered.connect(self.restoreFromTray)
 
@@ -471,7 +482,7 @@ if __name__ == "__main__":
             QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
             QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
             QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
-            if darkdetect.isDark():
+            if isDark():
                 setTheme(Theme.DARK)
             else:
                 setTheme(Theme.LIGHT)

@@ -21,7 +21,7 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
     NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
-    BodyLabel, InfoBarPosition, PushButton
+    BodyLabel, InfoBarPosition
 from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEdit
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -52,9 +52,14 @@ class Mutex:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.file:
-            portalocker.unlock(self.file)
-            self.file.close()
-            os.remove('RandomSetting.lockfile')
+            try:
+                portalocker.unlock(self.file)
+                self.file.close()
+            finally:
+                try:
+                    os.remove('RandomSetting.lockfile')
+                except:
+                    pass
 
 
 class SmoothScrollArea(QScrollArea):
@@ -767,21 +772,21 @@ class HomeInterface(SmoothScrollArea):
             cfg.Value,
             FIF.PEOPLE,
             self.tr('人数'),
-            self.tr('设置随机总数'),
+            self.tr('更改随机总数'),
             parent=self.elementGroup)
         self.noRepeatCard = SwitchSettingCard(
             FIF.COMPLETED,
             self.tr("去重"),
-            self.tr("设置随机数不重复"),
+            self.tr("随机数不重复"),
             configItem=cfg.NoRepeat,
             parent=self.elementGroup)
 
-        self.isDarkCard = ComboBoxSettingCard(
-            cfg.IsDark,
+        self.themeCard = ComboBoxSettingCard(
+            cfg.Theme,
             FIF.BRUSH,
             self.tr('主题'),
             self.tr('更改按钮的颜色主题'),
-            texts=['深色', '浅色'],
+            texts=[self.tr("浅色"), self.tr("深色"), self.tr("使用系统设置")],
             parent=self.appearanceGroup)
         self.opacityCard = RangeSettingCard(
             cfg.Opacity,
@@ -874,7 +879,7 @@ class HomeInterface(SmoothScrollArea):
 
         self.elementGroup.addSettingCard(self.valueCard)
         self.elementGroup.addSettingCard(self.noRepeatCard)
-        self.appearanceGroup.addSettingCard(self.isDarkCard)
+        self.appearanceGroup.addSettingCard(self.themeCard)
         self.appearanceGroup.addSettingCard(self.opacityCard)
         self.appearanceGroup.addSettingCard(self.zoomCard)
         self.actGroup.addSettingCard(self.autoRunCard)
@@ -905,7 +910,7 @@ class HomeInterface(SmoothScrollArea):
         if w.exec():
             self.valueCard.setValue(40)
             self.noRepeatCard.setValue(True)
-            self.isDarkCard.setValue(True)
+            self.themeCard.setValue(True)
             self.opacityCard.setValue(50)
             self.zoomCard.setValue("Auto")
             self.autoRunCard.setValue(True)
