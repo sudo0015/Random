@@ -14,12 +14,16 @@ class Config(QConfig):
     Theme = OptionsConfigItem("MainWindow", "Theme", "Auto", OptionsValidator(["Light", "Dark", "Auto"]))
     dpiScale = OptionsConfigItem("MainWindow", "DpiScale", "Auto", OptionsValidator([1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
     Position = OptionsConfigItem("MainWindow", "Position", "TopLeft", OptionsValidator(["TopLeft", "TopCenter", "TopRight", "BottomLeft", "BottomCenter", "BottomRight"]))
+
     RunHotKey = ConfigItem("MainWindow", "RunHotKey", "Ctrl+F1", ConfigValidator())
     ShowHotKey = ConfigItem("MainWindow", "ShowHotKey", "Ctrl+F2", ConfigValidator())
     HideHotKey = ConfigItem("MainWindow", "HideHotKey", "Ctrl+F3", ConfigValidator())
+    EnableRunHotKey = ConfigItem("MainWindow", "EnableRunHotKey", True, BoolValidator())
+    EnableShowHotKey = ConfigItem("MainWindow", "EnableShowHotKey", True, BoolValidator())
+    EnableHideHotKey = ConfigItem("MainWindow", "EnableHideHotKey", True, BoolValidator())
 
 
 YEAR = "2025"
-VERSION = "4.6.5"
+VERSION = "4.7.0"
 cfg = Config()
 qconfig.load(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'), cfg)

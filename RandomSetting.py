@@ -13,15 +13,14 @@ from RandomConfig import cfg, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent, QThread
 from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QKeySequence
-from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, \
-    QPushButton, QTextBrowser, QTextEdit, QLineEdit, QSpinBox, QScrollArea, \
-    QScroller, QAction
+from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, \
+    QTextBrowser, QTextEdit, QLineEdit, QSpinBox, QScrollArea, QScroller, QAction
 from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, ExpandLayout, MaskDialogBase, \
     SettingCardGroup, ComboBox, SwitchButton, IndicatorPosition, qconfig, TextWrap, InfoBarIcon, PrimaryPushButton, \
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
     NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
-    BodyLabel, InfoBarPosition
+    BodyLabel, InfoBarPosition, CheckBox
 from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEdit
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -543,7 +542,7 @@ class HotkeySettingCard(SettingCard):
     clicked = pyqtSignal()
 
     def __init__(self, icon: Union[str, QIcon, FIF], title, content=None,
-                 configItem: ConfigItem = None, parent=None):
+                 hotKey=None, enableHotKey=None, parent=None):
         """
         Parameters
         ----------
@@ -556,27 +555,38 @@ class HotkeySettingCard(SettingCard):
         content: str
             the content of card
 
-        configItem: ConfigItem
-            configuration item operated by the card
+        hotKey: ConfigItem
+
+        enableHotKey: ConfigItem
 
         parent: QWidget
             parent widget
         """
         super().__init__(icon, title, content, parent)
-        self.configItem = configItem
+        self.hotKey = hotKey
+        self.enableHotKey = enableHotKey
         self.button = TransparentToolButton(FIF.EDIT, self)
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.button.clicked.connect(self.clicked)
+        self.contentLabel.setText(self.hotKey.value if self.enableHotKey.value else self.tr("未启用"))
 
-        if configItem:
-            self.setValue(qconfig.get(configItem))
-            configItem.valueChanged.connect(self.setValue)
+        if hotKey and enableHotKey:
+            self.setValue(qconfig.get(hotKey), qconfig.get(enableHotKey))
+            hotKey.valueChanged.connect(lambda: self.setValue(self.hotKey.value, self.enableHotKey.value))
+            enableHotKey.valueChanged.connect(lambda: self.setValue(self.hotKey.value, self.enableHotKey.value))
+        else:
+            self.contentLabel.setText(self.tr("未启用"))
 
-    def setValue(self, hotkey):
-        if self.configItem:
-            qconfig.set(self.configItem, hotkey)
-        self.contentLabel.setText(hotkey)
+    def setValue(self, hotKey=None, enableHotKey=None):
+        if hotKey is not None and self.hotKey:
+            qconfig.set(self.hotKey, hotKey)
+        if enableHotKey is not None and self.enableHotKey:
+            qconfig.set(self.enableHotKey, enableHotKey)
+
+        if self.hotKey and self.enableHotKey:
+            text = hotKey if enableHotKey else self.tr("未启用")
+            self.contentLabel.setText(text)
 
 
 class SpinBoxSettingCard(SettingCard):
@@ -825,20 +835,23 @@ class HomeInterface(SmoothScrollArea):
         self.runHotKeyCard = HotkeySettingCard(
             FIF.SEND,
             self.tr('生成随机数'),
-            cfg.RunHotKey.value,
-            configItem=cfg.RunHotKey,
+            cfg.RunHotKey.value if cfg.EnableRunHotKey.value else self.tr("未启用"),
+            hotKey=cfg.RunHotKey,
+            enableHotKey=cfg.EnableRunHotKey,
             parent=self.hotkeyGroup)
         self.showHotKeyCard = HotkeySettingCard(
             FIF.ADD_TO,
             self.tr('显示'),
-            cfg.ShowHotKey.value,
-            configItem=cfg.ShowHotKey,
+            cfg.ShowHotKey.value if cfg.EnableShowHotKey.value else self.tr("未启用"),
+            hotKey=cfg.ShowHotKey,
+            enableHotKey=cfg.EnableShowHotKey,
             parent=self.hotkeyGroup)
         self.hideHotKeyCard = HotkeySettingCard(
             FIF.REMOVE_FROM,
             self.tr('隐藏'),
-            cfg.HideHotKey.value,
-            configItem=cfg.HideHotKey,
+            cfg.HideHotKey.value if cfg.EnableHideHotKey.value else self.tr("未启用"),
+            hotKey=cfg.HideHotKey,
+            enableHotKey=cfg.EnableHideHotKey,
             parent=self.hotkeyGroup)
 
         self.recoverCard = PushSettingCard(
@@ -916,9 +929,9 @@ class HomeInterface(SmoothScrollArea):
             self.autoRunCard.setValue(True)
             self.showTimeCard.setValue(True)
             self.positionCard.setValue("TopLeft")
-            self.runHotKeyCard.setValue("Ctrl+F1")
-            self.showHotKeyCard.setValue("Ctrl+F2")
-            self.hideHotKeyCard.setValue("Ctrl+F3")
+            self.runHotKeyCard.setValue("Ctrl+F1", True)
+            self.showHotKeyCard.setValue("Ctrl+F2", True)
+            self.hideHotKeyCard.setValue("Ctrl+F3", True)
 
             self.positionCard.adjustSize()
 
@@ -935,15 +948,12 @@ class HomeInterface(SmoothScrollArea):
     def onHotkeyCardClicked(self, index):
         w = HotkeyMessageBox(self.window())
         if w.exec():
-            if w.hotkeyEdit.text():
-                if index == 1:
-                    self.runHotKeyCard.setValue(w.hotkeyEdit.text())
-                elif index == 2:
-                    self.showHotKeyCard.setValue(w.hotkeyEdit.text())
-                elif index == 3:
-                    self.hideHotKeyCard.setValue(w.hotkeyEdit.text())
-            else:
-                pass
+            if index == 1:
+                self.runHotKeyCard.setValue(w.hotkeyEdit.text(), w.enableCheckBox.isChecked())
+            elif index == 2:
+                self.showHotKeyCard.setValue(w.hotkeyEdit.text(), w.enableCheckBox.isChecked())
+            elif index == 3:
+                self.hideHotKeyCard.setValue(w.hotkeyEdit.text(), w.enableCheckBox.isChecked())
 
     def setupRestartThread(self):
         self.restartThread.restartFinished.connect(self.restartThreadFinished)
@@ -1231,6 +1241,8 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
         self.bodyLabel = BodyLabel('按下键盘按键以设置快捷键', self)
         self.hotkeyEdit = HotkeyEdit(self)
         self.hotkeyEdit.textChanged.connect(self.onTextChange)
+        self.enableCheckBox = CheckBox(self)
+        self.enableCheckBox.setText("启用快捷键")
         self.warningBar = WarningBar(title="", content="无效的快捷键", parent=self)
         self.warningBar.setFixedHeight(48)
         self.warningBar.setVisible(False)
@@ -1239,6 +1251,7 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
         self.viewLayout.addWidget(self.bodyLabel)
         self.viewLayout.addWidget(self.hotkeyEdit)
         self.viewLayout.addWidget(self.warningBar)
+        self.viewLayout.addWidget(self.enableCheckBox)
 
         self.yesButton.clicked.connect(self.onYesBtn)
         self.widget.setMinimumWidth(350)
