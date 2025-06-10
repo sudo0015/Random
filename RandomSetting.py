@@ -565,7 +565,8 @@ class HotkeySettingCard(SettingCard):
         super().__init__(icon, title, content, parent)
         self.hotKey = hotKey
         self.enableHotKey = enableHotKey
-        self.button = TransparentToolButton(FIF.EDIT, self)
+        self.button = TransparentToolButton(self)
+        self.button.setIcon(FIF.EDIT)
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.button.clicked.connect(self.clicked)
@@ -946,7 +947,7 @@ class HomeInterface(SmoothScrollArea):
             os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'))
 
     def onHotkeyCardClicked(self, index):
-        w = HotkeyMessageBox(self.window())
+        w = HotkeyMessageBox(index=index, parent=self.window())
         if w.exec():
             if index == 1:
                 self.runHotKeyCard.setValue(w.hotkeyEdit.text(), w.enableCheckBox.isChecked())
@@ -1234,7 +1235,7 @@ class HotKeyMessageBoxBase(MaskDialogBase):
 
 class HotkeyMessageBox(HotKeyMessageBoxBase):
 
-    def __init__(self, parent=None):
+    def __init__(self, index=None, parent=None):
         super().__init__(parent)
 
         self.titleLabel = SubtitleLabel('设置快捷键', self)
@@ -1246,6 +1247,16 @@ class HotkeyMessageBox(HotKeyMessageBoxBase):
         self.warningBar = WarningBar(title="", content="无效的快捷键", parent=self)
         self.warningBar.setFixedHeight(48)
         self.warningBar.setVisible(False)
+
+        if index == 1:
+            self.hotkeyEdit.setText(cfg.RunHotKey.value)
+            self.enableCheckBox.setChecked(cfg.EnableRunHotKey.value)
+        elif index == 2:
+            self.hotkeyEdit.setText(cfg.ShowHotKey.value)
+            self.enableCheckBox.setChecked(cfg.EnableShowHotKey.value)
+        elif index == 3:
+            self.hotkeyEdit.setText(cfg.HideHotKey.value)
+            self.enableCheckBox.setChecked(cfg.EnableHideHotKey.value)
 
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addWidget(self.bodyLabel)
