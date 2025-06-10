@@ -384,8 +384,10 @@ class Main(QWidget):
         self._bottomcenter_action.triggered.connect(lambda: self.moveWidget("BottomCenter"))
         self._bottomright_action.triggered.connect(lambda: self.moveWidget("BottomRight"))
 
-        self._hide_action = QAction(FIF.REMOVE_FROM.icon(), "隐藏", shortcut=self.hideHotKey, parent=self)
-        self._restore_action = QAction(FIF.ADD_TO.icon(), "显示", shortcut=self.showHotKey, parent=self)
+        hideShortCut = self.hideHotKey if cfg.EnableHideHotKey.value else ""
+        showShortCut = self.showHotKey if cfg.EnableShowHotKey.value else ""
+        self._hide_action = QAction(FIF.REMOVE_FROM.icon(), "隐藏", shortcut=hideShortCut, parent=self)
+        self._restore_action = QAction(FIF.ADD_TO.icon(), "显示", shortcut=showShortCut, parent=self)
         self._hide_action.triggered.connect(self.hide)
         self._restore_action.triggered.connect(self.restoreFromTray)
 
