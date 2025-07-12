@@ -14,7 +14,8 @@ from RandomConfig import cfg, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
 from psutil import process_iter, Process
 from psutil._common import NoSuchProcess, AccessDenied
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent, QThread, QTimer, QModelIndex
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent, QThread, QTimer, QModelIndex, QObject, QRunnable, \
+    QThreadPool
 from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QKeySequence
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, \
     QTextBrowser, QTextEdit, QLineEdit, QSpinBox, QScrollArea, QScroller, QAction, QFileDialog, QCompleter, QSizePolicy
@@ -996,11 +997,18 @@ class ComboBoxSettingCard(SettingCard):
         qconfig.set(self.configItem, value)
 
 
-class RestartThread(QThread):
+class RestartSignals(QObject):
     restartFinished = pyqtSignal(bool)
 
+
+class RestartTask(QRunnable):
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
+        super().__init__()
+        self.signals = RestartSignals()
+        self.parent = parent
+        self.signals.moveToThread(QApplication.instance().thread())
+        self.signals.moveToThread(QApplication.instance().thread())
+        self.setAutoDelete(True)
 
     def killProcess(self, process_name):
         for proc in process_iter(['pid', 'name']):
@@ -1014,8 +1022,8 @@ class RestartThread(QThread):
 
     def run(self):
         self.killProcess("RandomMain.exe")
-        subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
-        self.restartFinished.emit(True)
+        subprocess.Popen(["RandomMain.exe", "--force-start"], shell=True)
+        self.signals.restartFinished.emit(True)
 
 
 class HomeInterface(SmoothScrollArea):
@@ -1149,9 +1157,8 @@ class HomeInterface(SmoothScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setViewportMargins(0, 60, 0, 5)
         self.setWidget(self.scrollWidget)
-        self.restartThread = RestartThread()
-        self.restartThreadRunning = False
-        self.setupRestartThread()
+        self.threadPool = QThreadPool.globalInstance()
+        self.threadPool.setMaxThreadCount(1)
         self.setWidgetResizable(True)
 
         self.__initLayout()
@@ -1214,6 +1221,16 @@ class HomeInterface(SmoothScrollArea):
 
             self.positionCard.adjustSize()
 
+    def restartThreadFinished(self):
+        InfoBar.success(
+            '',
+            self.tr('Random 已重启'),
+            position=InfoBarPosition.TOP,
+            duration=2000,
+            isClosable=False,
+            parent=self.window()
+        )
+
     def openConfig(self):
         w = MessageBox(
             '打开配置文件',
@@ -1234,21 +1251,6 @@ class HomeInterface(SmoothScrollArea):
             elif index == 3:
                 self.hideHotKeyCard.setValue(w.hotkeyEdit.text(), w.enableCheckBox.isChecked())
 
-    def setupRestartThread(self):
-        self.restartThread.restartFinished.connect(self.restartThreadFinished)
-        self.restartThreadRunning = True
-
-    def restartThreadFinished(self):
-        InfoBar.success(
-            '',
-            self.tr('Random 已重启'),
-            position=InfoBarPosition.TOP,
-            duration=2000,
-            isClosable=False,
-            parent=self.window()
-        )
-        self.restartThreadRunning = False
-
     def onApplyBtn(self):
         w = MessageBox(
             '重启 Random',
@@ -1257,7 +1259,9 @@ class HomeInterface(SmoothScrollArea):
         w.yesButton.setText('立即重启')
         w.cancelButton.setText('暂不重启')
         if w.exec():
-            self.restartThread.start()
+            task = RestartTask()
+            task.signals.restartFinished.connect(self.restartThreadFinished)
+            self.threadPool.start(task)
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -1341,9 +1345,10 @@ class StyleSheetInterface(SmoothScrollArea):
         self.setViewportMargins(0, 60, 0, 5)
         self.setWidget(self.scrollWidget)
         self.infoBar = InformationBar(title="", content="自定义样式表需要了解QSS", parent=self)
-        self.restartThread = RestartThread()
+        self.threadPool = QThreadPool.globalInstance()
+        self.threadPool.setMaxThreadCount(1)
         self.setWidgetResizable(True)
-        self.restartThreadRunning = False
+
         self.__initLayout()
         self.__connectSignalToSlot()
 
@@ -1403,17 +1408,6 @@ class StyleSheetInterface(SmoothScrollArea):
     def __onQssFolderCardClicked(self):
         os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'qss'))
 
-    def setupRestartThread(self):
-        self.restartThread.restartFinished.connect(self.restartThreadFinished)
-        self.restartThreadRunning = True
-
-    def startRestartThread(self):
-        if self.restartThreadRunning:
-            self.restartThread.start()
-        else:
-            self.setupRestartThread()
-            self.restartThread.start()
-
     def restartThreadFinished(self):
         InfoBar.success(
             '',
@@ -1423,8 +1417,6 @@ class StyleSheetInterface(SmoothScrollArea):
             isClosable=False,
             parent=self.window()
         )
-        self.restartThread.quit()
-        self.restartThreadRunning = False
 
     def onApplyBtn(self):
         w = MessageBox(
@@ -1434,8 +1426,9 @@ class StyleSheetInterface(SmoothScrollArea):
         w.yesButton.setText('立即重启')
         w.cancelButton.setText('暂不重启')
         if w.exec():
-            self.setupRestartThread()
-            self.startRestartThread()
+            task = RestartTask()
+            task.signals.restartFinished.connect(self.restartThreadFinished)
+            self.threadPool.start(task)
 
     def __showRestartTooltip(self):
         """ show restart tooltip """
@@ -2148,7 +2141,6 @@ class MSFluentWindow(FluentWindowBase):
 
         self.navigationInterface = NavigationBar(self)
 
-        # initialize layout
         self.hBoxLayout.setContentsMargins(0, 48, 0, 0)
         self.hBoxLayout.addWidget(self.navigationInterface)
         self.hBoxLayout.addWidget(self.stackedWidget, 1)
@@ -2184,7 +2176,6 @@ class MSFluentWindow(FluentWindowBase):
         interface.setProperty("isStackedTransparent", isTransparent)
         self.stackedWidget.addWidget(interface)
 
-        # add navigation item
         routeKey = interface.objectName()
         item = self.navigationInterface.addItem(
             routeKey=routeKey,
