@@ -3,6 +3,8 @@
 import sys
 import subprocess
 import darkdetect
+from psutil import process_iter, Process
+from psutil._common import NoSuchProcess, AccessDenied
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame
@@ -12,7 +14,6 @@ from qframelesswindow import FramelessDialog
 
 
 class Ui_MessageBox:
-    """ Ui of message box """
 
     yesSignal = pyqtSignal()
     cancelSignal = pyqtSignal()
@@ -109,7 +110,6 @@ class Ui_MessageBox:
 
 
 class Dialog(FramelessDialog, Ui_MessageBox):
-    """ Dialog box """
 
     yesSignal = pyqtSignal()
     cancelSignal = pyqtSignal()
@@ -148,12 +148,22 @@ class App:
             subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
             sys.exit()
 
+    def killProcess(self, process_name):
+        for proc in process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'].lower() == process_name.lower():
+                    pid = proc.info['pid']
+                    p = Process(pid)
+                    p.kill()
+            except (NoSuchProcess, AccessDenied):
+                pass
+
     def showDialog(self):
         w = Dialog("提示", "Random 已在后台运行")
         w.yesButton.setText("重启")
         w.cancelButton.setText("取消")
         if w.exec():
-            subprocess.run(["taskkill", "-f", "-im", "RandomMain.exe"], shell=True)
+            self.killProcess("RandomMain.exe")
             subprocess.run(["RandomMain.exe", "--force-start"], shell=True)
             sys.exit()
         else:

@@ -15,7 +15,7 @@ from ctypes.wintypes import MSG
 from ctypes import windll, byref
 from win32con import MOD_CONTROL, MOD_SHIFT, MOD_ALT
 from PyQt5.QtGui import QIcon, QMouseEvent, QCursor
-from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread
+from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread, QFile
 from PyQt5.QtWidgets import QAction, QPushButton, QVBoxLayout, QSystemTrayIcon, QWidget, QApplication, QHBoxLayout, \
     QLabel, QFrame
 from qfluentwidgets import RoundMenu, setTheme, Theme, BodyLabel, PrimaryPushButton, TextWrap, FluentStyleSheet
@@ -232,10 +232,15 @@ class Main(QWidget):
         self.runHotKey = cfg.RunHotKey.value
         self.showHotKey = cfg.ShowHotKey.value
         self.hideHotKey = cfg.HideHotKey.value
+        self.topMargin = cfg.TopMargin.value
+        self.bottomMargin = cfg.BottomMargin.value
+        self.leftMargin = cfg.LeftMargin.value
+        self.rightMargin = cfg.RightMargin.value
 
         self.isOnRandom = False
         self.isTracking = False
         self.arr = [x for x in range(1, self.value + 1)]
+        self.desktop = QApplication.screens()[0].size()
 
         self.setWindowTitle("Random")
         self.button = QPushButton("Rd")
@@ -246,8 +251,6 @@ class Main(QWidget):
         self.setBtnStyleSheet()
         self.button.installEventFilter(self)
         self.button.clicked.connect(self.run)
-
-        self.desktop = QApplication.screens()[0].size()
         self.moveWidget(self.position)
 
         self.layout = QVBoxLayout()
@@ -315,41 +318,51 @@ class Main(QWidget):
                 self.hotkeyManagers.append(manager)
 
     def setBtnStyleSheet(self):
-        if self.theme == "Light":
-            theme = True
-        elif self.theme == "Dark":
-            theme = False
-        else:
-            if isDark():
+        if not cfg.EnableCustomStyleSheet.value or not os.path.exists(cfg.QssPath.value):
+            if self.theme == "Light":
+                theme = True
+            elif self.theme == "Dark":
                 theme = False
             else:
-                theme = True
-        if theme:
-            """Light Theme"""
-            self.button.setStyleSheet(
-                "QPushButton{background-color:rgba(249,249,249," + str(2.55*self.opacity) + ");color:rgba(249,249,249," + str(2.55*self.opacity) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
-                "QPushButton:hover{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}"
-                "QPushButton:pressed{background-color:rgba(249,249,249,255);color:rgba(249,249,249,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(0,0,0);}")
+                if isDark():
+                    theme = False
+                else:
+                    theme = True
+            if theme:
+                """Light Theme"""
+                self.button.setStyleSheet(
+                    'QPushButton {background-color: rgba(249, 249, 249, ' + str(2.55*self.opacity) + ');color: rgb(0, 0, 0);border-radius: 16px;border: 0.5px groove gray;border-style: outset;font-family: "Microsoft YaHei";font-size: 15pt;}'
+                    'QPushButton:hover {background-color: rgba(249, 249, 249, 255);}'
+                    'QPushButton:pressed {background-color: rgba(249, 249, 249, 255);}')
+            else:
+                """Dark Theme"""
+                self.button.setStyleSheet(
+                    'QPushButton {background-color: rgba(39, 39, 39, ' + str(2.55*self.opacity) + ');color: rgb(255, 255, 255);border-radius: 16px;border: 0.5px groove gray;border-style: outset;font-family: "Microsoft YaHei";font-size: 15pt;}'
+                    'QPushButton:hover {background-color: rgba(39, 39, 39, 255);}'
+                    'QPushButton:pressed {background-color: rgba(39, 39, 39, 255);}')
         else:
-            """Dark Theme"""
-            self.button.setStyleSheet(
-                "QPushButton{background-color:rgba(39,39,39," + str(2.55*self.opacity) + ");color:rgba(39,39,39," + str(2.55*self.opacity) + ");border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
-                "QPushButton:hover{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}"
-                "QPushButton:pressed{background-color:rgba(39,39,39,255);color:rgba(39,39,39,255);border-radius:16px;border:0.5px groove gray;border-style:outset;font-family:Microsoft YaHei;font-size:15pt;color:rgb(255,255,255);}")
+            f = QFile(cfg.QssPath.value)
+            f.open(QFile.ReadOnly)
+            qss = str(f.readAll(), encoding='utf-8')
+            f.close()
+            self.button.setStyleSheet(qss)
+
+        if cfg.EnableCustomStyleSheet.value and not os.path.exists(cfg.QssPath.value):
+            self.showNoQssWarning()
 
     def moveWidget(self, position):
         if position == "TopLeft":
-            self.move(10, 50)
+            self.move(self.leftMargin, self.topMargin)
         elif position == "TopCenter":
-            self.move(self.desktop.width() // 2 - self.width() // 2, 50)
+            self.move(self.desktop.width() // 2 - self.width() // 2, self.topMargin)
         elif position == "TopRight":
-            self.move(self.desktop.width() - 10 - self.width(), 50)
+            self.move(self.desktop.width() - self.width() - self.rightMargin, self.topMargin)
         elif position == "BottomLeft":
-            self.move(10, self.desktop.height() - 100 - self.height())
+            self.move(self.leftMargin, self.desktop.height() - self.height() - self.bottomMargin)
         elif position == "BottomCenter":
-            self.move(self.desktop.width() // 2 - self.width() // 2, self.desktop.height() - 100 - self.height())
+            self.move(self.desktop.width() // 2 - self.width() // 2, self.desktop.height() - self.height() - self.bottomMargin)
         elif position == "BottomRight":
-            self.move(self.desktop.width() - 10 - self.width(), self.desktop.height() - 100 - self.height())
+            self.move(self.desktop.width() - self.width() - self.rightMargin, self.desktop.height() - self.height() - self.bottomMargin)
 
     def restoreFromTray(self):
         if self.isMinimized():
@@ -436,9 +449,20 @@ class Main(QWidget):
             error = "显示"
         elif hotkeyName == "Hide":
             error = "隐藏"
-        w = Dialog("错误", f"检测到快捷键冲突: {error}", self)
+        w = Dialog("警告", f"检测到快捷键冲突: {error}", self)
         w.yesButton.setText("转到设置")
         w.cancelButton.setText("忽略")
+        w.setFixedWidth(300)
+        w.move(self.desktop.width() // 2 - w.width() // 2, self.desktop.height() // 2 - w.height() // 2)
+        if w.exec():
+            subprocess.Popen("RandomSetting.exe", shell=True)
+        else:
+            pass
+
+    def showNoQssWarning(self):
+        w = Dialog("错误", "样式表文件不存在，已应用默认样式。", self)
+        w.yesButton.setText("转到设置")
+        w.cancelButton.setText("取消")
         w.setFixedWidth(300)
         w.move(self.desktop.width() // 2 - w.width() // 2, self.desktop.height() // 2 - w.height() // 2)
         if w.exec():
