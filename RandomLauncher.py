@@ -4,9 +4,8 @@ import sys
 import subprocess
 import darkdetect
 from psutil import process_iter, Process
-from psutil._common import NoSuchProcess, AccessDenied
-from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame
 from qfluentwidgets import Dialog, setTheme, Theme, setThemeColor, FluentStyleSheet, TextWrap, PrimaryPushButton, \
     BodyLabel
@@ -155,7 +154,7 @@ class App:
                     pid = proc.info['pid']
                     p = Process(pid)
                     p.kill()
-            except (NoSuchProcess, AccessDenied):
+            except:
                 pass
 
     def showDialog(self):

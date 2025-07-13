@@ -9,12 +9,11 @@ import portalocker
 import RandomResource
 from enum import Enum
 from typing import Union
-from webbrowser import open as webopen
+from webbrowser import open as WebOpen
+from psutil import process_iter, Process
 from RandomConfig import cfg, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
-from psutil import process_iter, Process
-from psutil._common import NoSuchProcess, AccessDenied
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent, QThread, QTimer, QModelIndex, QObject, QRunnable, \
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QEasingCurve, QEvent, QTimer, QModelIndex, QObject, QRunnable, \
     QThreadPool
 from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QKeySequence
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, \
@@ -1017,7 +1016,7 @@ class RestartTask(QRunnable):
                     pid = proc.info['pid']
                     p = Process(pid)
                     p.kill()
-            except (NoSuchProcess, AccessDenied):
+            except:
                 pass
 
     def run(self):
@@ -1471,9 +1470,9 @@ class DetailMessageBox(MessageBoxBase):
         self.githubBtn.setIcon(FIF.GITHUB)
         self.websiteBtn.setIcon(FIF.GLOBE)
         self.onlineDocBtn.setIcon(FIF.DOCUMENT)
-        self.githubBtn.clicked.connect(lambda: webopen("https://github.com/sudo0015/Random"))
-        self.websiteBtn.clicked.connect(lambda: webopen("https://sudo0015.github.io/"))
-        self.onlineDocBtn.clicked.connect(lambda: webopen("https://sudo0015.github.io/post/Random%20-bang-zhu.html"))
+        self.githubBtn.clicked.connect(lambda: WebOpen("https://github.com/sudo0015/Random"))
+        self.websiteBtn.clicked.connect(lambda: WebOpen("https://sudo0015.github.io/"))
+        self.onlineDocBtn.clicked.connect(lambda: WebOpen("https://sudo0015.github.io/post/Random%20-bang-zhu.html"))
 
         self.btnLayout = QHBoxLayout(self)
         self.btnLayout.addWidget(self.githubBtn)
@@ -1971,7 +1970,7 @@ class AboutInterface(SmoothScrollArea):
         self.aboutESCard.clicked.connect(self.onAboutESCardClicked)
         self.aboutBSCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/AboutBugStudio.html")))
         self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/RandomHelp.html")))
-        self.feedbackCard.clicked.connect(lambda: webopen("https://github.com/sudo0015/Random/issues"))
+        self.feedbackCard.clicked.connect(lambda: WebOpen("https://github.com/sudo0015/Random/issues"))
 
 
 class TitleBarBase(QWidget):
