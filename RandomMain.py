@@ -15,7 +15,7 @@ from ctypes.wintypes import MSG
 from ctypes import windll, byref
 from win32con import MOD_CONTROL, MOD_SHIFT, MOD_ALT
 from PyQt5.QtGui import QIcon, QMouseEvent, QCursor
-from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread, QFile
+from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread, QFile, QPropertyAnimation, QAbstractAnimation
 from PyQt5.QtWidgets import QAction, QPushButton, QVBoxLayout, QSystemTrayIcon, QWidget, QApplication, QHBoxLayout, \
     QLabel, QFrame
 from qfluentwidgets import RoundMenu, setTheme, Theme, BodyLabel, PrimaryPushButton, TextWrap, FluentStyleSheet
@@ -224,7 +224,7 @@ class Main(QWidget):
     def __init__(self):
         super().__init__()
         self.value = cfg.Value.value
-        self.opacity = cfg.Opacity.value
+        self.opacity = cfg.Opacity.value / 100
         self.theme = cfg.Theme.value
         self.noRepeat = cfg.NoRepeat.value
         self.position = cfg.Position.value
@@ -243,6 +243,7 @@ class Main(QWidget):
         self.desktop = QApplication.screens()[0].size()
 
         self.setWindowTitle("Random")
+        self.setWindowIcon(QIcon(':/icon.png'))
         self.button = QPushButton("Rd")
         self.button.setFixedSize(75, 33)
         self.setFixedSize(100, 50)
@@ -270,6 +271,12 @@ class Main(QWidget):
         self.tray_icon.show()
         self.tray_icon.activated.connect(self.trayIconActivated)
 
+        self.setWindowOpacity(self.opacity)
+        self.opacityAni = QPropertyAnimation(self, b'windowOpacity', self)
+        self.opacityAni.setDuration(1000)
+        self.opacityAni.setEndValue(self.opacity)
+        self.opacityAni.finished.connect(self.opacityAniFinished)
+
         self.setupTimer()
         self.setupHotKey()
         self.show()
@@ -291,13 +298,13 @@ class Main(QWidget):
         event.ignore()
 
     def setupTimer(self):
+        self.onRandomTimer = QTimer()
+        self.onRandomTimer.timeout.connect(self.opacityAni.start)
         if self.isShowTime:
             self.updateTime()
             self.timer = QTimer()
             self.timer.start(1000)
             self.timer.timeout.connect(self.updateTime)
-            self.onRandomTimer = QTimer()
-            self.onRandomTimer.timeout.connect(self.cancelOnRandom)
 
     def setupHotKey(self):
         self.hotKeyDict = {"Run": "", "Show": "", "Hide": ""}
@@ -331,13 +338,13 @@ class Main(QWidget):
             if theme:
                 """Light Theme"""
                 self.button.setStyleSheet(
-                    'QPushButton {background-color: rgba(249, 249, 249, ' + str(2.55*self.opacity) + ');color: rgb(0, 0, 0);border-radius: 16px;border: 0.5px groove gray;border-style: outset;font-family: "Microsoft YaHei";font-size: 15pt;}'
+                    'QPushButton {background-color: rgb(249, 249, 249);color: rgb(0, 0, 0);border-radius: 16px;border: 0.5px groove gray;border-style: outset;font-family: "Microsoft YaHei";font-size: 15pt;}'
                     'QPushButton:hover {background-color: rgba(249, 249, 249, 255);}'
                     'QPushButton:pressed {background-color: rgba(249, 249, 249, 255);}')
             else:
                 """Dark Theme"""
                 self.button.setStyleSheet(
-                    'QPushButton {background-color: rgba(39, 39, 39, ' + str(2.55*self.opacity) + ');color: rgb(255, 255, 255);border-radius: 16px;border: 0.5px groove gray;border-style: outset;font-family: "Microsoft YaHei";font-size: 15pt;}'
+                    'QPushButton {background-color: rgb(39, 39, 39);color: rgb(255, 255, 255);border-radius: 16px;border: 0.5px groove gray;border-style: outset;font-family: "Microsoft YaHei";font-size: 15pt;}'
                     'QPushButton:hover {background-color: rgba(39, 39, 39, 255);}'
                     'QPushButton:pressed {background-color: rgba(39, 39, 39, 255);}')
         else:
@@ -474,24 +481,28 @@ class Main(QWidget):
         if not self.isOnRandom:
             self.button.setText(QDateTime.currentDateTime().toString('hh:mm'))
 
-    def cancelOnRandom(self):
+    def opacityAniFinished(self):
         self.isOnRandom = False
+        self.opacityAni.stop()
 
     def run(self):
-        temp = random.choice(self.arr)
-        self.button.setText(str(temp))
+        if self.opacityAni.Running:
+            self.opacityAni.stop()
+        self.setWindowOpacity(1)
+
+        num = random.choice(self.arr)
+        self.button.setText(str(num))
         if self.noRepeat:
-            self.arr.remove(temp)
+            self.arr.remove(num)
             if not self.arr:
                 self.arr = [x for x in range(1, self.value + 1)]
 
-        if self.isShowTime:
-            self.isOnRandom = True
-            if self.onRandomTimer.isActive():
-                self.onRandomTimer.stop()
-                self.onRandomTimer.start(5000)
-            else:
-                self.onRandomTimer.start(5000)
+        self.isOnRandom = True
+        if self.onRandomTimer.isActive():
+            self.onRandomTimer.stop()
+            self.onRandomTimer.start(5000)
+        else:
+            self.onRandomTimer.start(5000)
 
         windowlist = []
         win32gui.EnumWindows(windowEnumerationHandler, windowlist)

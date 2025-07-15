@@ -1033,15 +1033,15 @@ class HomeInterface(SmoothScrollArea):
         self.stateTooltip = None
         self.expandLayout = ExpandLayout(self.scrollWidget)
         self.enableTransparentBackground()
-        self.settingLabel = QLabel(self.tr("设置"), self)
+        self.settingLabel = QLabel("设置", self)
         self.applyBtn = PrimaryPushButton("应用", self)
         self.applyBtn.setFixedWidth(80)
         self.applyBtn.clicked.connect(self.onApplyBtn)
         if darkdetect.isDark():
-            self.scrollWidget.setStyleSheet("background-color: rgb(39, 39, 39);")
+            self.scrollWidget.setStyleSheet("background-color: rgba(39, 39, 39, 0);")
             self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent; color: white;")
         else:
-            self.scrollWidget.setStyleSheet("background-color: rgb(249, 249, 249);")
+            self.scrollWidget.setStyleSheet("background-color: rgba(249, 249, 249, 0);")
             self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent;")
 
         self.elementGroup = SettingCardGroup(self.tr('通用'), self.scrollWidget)
@@ -1164,7 +1164,7 @@ class HomeInterface(SmoothScrollArea):
         self.__connectSignalToSlot()
 
     def __initLayout(self):
-        self.settingLabel.move(20, 10)
+        self.settingLabel.move(30, 10)
         self.applyBtn.move(285, 15)
 
         self.elementGroup.addSettingCard(self.valueCard)
@@ -1292,15 +1292,15 @@ class StyleSheetInterface(SmoothScrollArea):
         self.stateTooltip = None
         self.expandLayout = ExpandLayout(self.scrollWidget)
         self.enableTransparentBackground()
-        self.settingLabel = QLabel(self.tr("样式表"), self)
+        self.settingLabel = QLabel("样式表", self)
         self.applyBtn = PrimaryPushButton("应用", self)
         self.applyBtn.setFixedWidth(80)
         self.applyBtn.clicked.connect(self.onApplyBtn)
         if darkdetect.isDark():
-            self.scrollWidget.setStyleSheet("background-color: rgb(39, 39, 39);")
+            self.scrollWidget.setStyleSheet("background-color: rgba(39, 39, 39, 0);")
             self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent; color: white;")
         else:
-            self.scrollWidget.setStyleSheet("background-color: rgb(249, 249, 249);")
+            self.scrollWidget.setStyleSheet("background-color: rgba(249, 249, 249, 0);")
             self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent;")
 
         self.styleSheetGroup = SettingCardGroup('', self.scrollWidget)
@@ -1352,7 +1352,7 @@ class StyleSheetInterface(SmoothScrollArea):
         self.__connectSignalToSlot()
 
     def __initLayout(self):
-        self.settingLabel.move(20, 10)
+        self.settingLabel.move(30, 10)
         self.applyBtn.move(285, 15)
 
         self.styleSheetGroup.addSettingCard(self.infoBar)
@@ -1381,7 +1381,7 @@ class StyleSheetInterface(SmoothScrollArea):
                 filepath = os.path.join(os.path.expanduser('~'), '.Random', 'qss', f'{w.nameEdit.text()}.qss')
                 content = ''
                 if w.templateCheckBox.isChecked():
-                    content = 'QPushButton {\n    background-color: rgba(249, 249, 249, 200);\n    color: rgb(0, 0, 0);\n    border-radius: 16px;\n    border: 0.5px groove gray;\n    border-style: outset;\n    font-family: "Microsoft YaHei";\n    font-size: 15pt;\n}\nQPushButton:hover {\n    background-color: rgba(249, 249, 249, 255);\n}\nQPushButton:pressed {\n    background-color: rgba(249, 249, 249, 255);\n}\n'
+                    content = 'QPushButton {\n    background-color: rgb(249, 249, 249);\n    color: rgb(0, 0, 0);\n    border-radius: 16px;\n    border: 0.5px groove gray;\n    border-style: outset;\n    font-family: "Microsoft YaHei";\n    font-size: 15pt;\n}\nQPushButton:hover {\n    background-color: rgba(249, 249, 249, 255);\n}\nQPushButton:pressed {\n    background-color: rgba(249, 249, 249, 255);\n}\n'
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(content)
                 InfoBar.success(
@@ -1499,14 +1499,13 @@ class InfoIconWidget(QWidget):
 
     def paintEvent(self, e):
         painter = QPainter(self)
-        painter.setRenderHints(QPainter.Antialiasing |
-                               QPainter.SmoothPixmapTransform)
+        painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
 
         rect = QRectF(10, 10, 15, 15)
         if self.icon != InfoBarIcon.INFORMATION:
             drawIcon(self.icon, painter, rect)
         else:
-            drawIcon(self.icon, painter, rect, indexes=[0], fill=themeColor().name())
+            drawIcon(self.icon, painter, rect, indexes=[0], fill=QColor("#0063b1").name())
 
 
 class WarningBar(QFrame):
@@ -1904,9 +1903,9 @@ class AboutInterface(SmoothScrollArea):
         self.expandLayout = ExpandLayout(self.scrollWidget)
         self.enableTransparentBackground()
         if darkdetect.isDark():
-            self.scrollWidget.setStyleSheet("background-color: rgb(39, 39, 39);")
+            self.scrollWidget.setStyleSheet("background-color: rgba(39, 39, 39, 0);")
         else:
-            self.scrollWidget.setStyleSheet("background-color: rgb(249, 249, 249);")
+            self.scrollWidget.setStyleSheet("background-color: rgba(249, 249, 249, 0);")
 
         self.aboutGroup = SettingCardGroup(self.tr(''), self.scrollWidget)
         self.aboutESCard = PushSettingCard(
@@ -1957,6 +1956,7 @@ class AboutInterface(SmoothScrollArea):
         self.aboutGroup.addSettingCard(self.aboutBSCard)
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
+
         self.expandLayout.setContentsMargins(25, 20, 25, 20)
         self.expandLayout.addWidget(self.imgLabel)
         self.expandLayout.addWidget(self.aboutGroup)
