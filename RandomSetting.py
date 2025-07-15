@@ -1006,7 +1006,6 @@ class RestartTask(QRunnable):
         self.signals = RestartSignals()
         self.parent = parent
         self.signals.moveToThread(QApplication.instance().thread())
-        self.signals.moveToThread(QApplication.instance().thread())
         self.setAutoDelete(True)
 
     def killProcess(self, process_name):
