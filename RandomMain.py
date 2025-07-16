@@ -15,7 +15,7 @@ from ctypes.wintypes import MSG
 from ctypes import windll, byref
 from win32con import MOD_CONTROL, MOD_SHIFT, MOD_ALT
 from PyQt5.QtGui import QIcon, QMouseEvent, QCursor
-from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread, QFile, QPropertyAnimation, QAbstractAnimation
+from PyQt5.QtCore import Qt, QTimer, QDateTime, pyqtSignal, QThread, QFile, QPropertyAnimation
 from PyQt5.QtWidgets import QAction, QPushButton, QVBoxLayout, QSystemTrayIcon, QWidget, QApplication, QHBoxLayout, \
     QLabel, QFrame
 from qfluentwidgets import RoundMenu, setTheme, Theme, BodyLabel, PrimaryPushButton, TextWrap, FluentStyleSheet

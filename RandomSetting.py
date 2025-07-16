@@ -23,7 +23,7 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
     NavigationBar, NavigationBarPushButton, SplashScreen, Slider, OptionsSettingCard, InfoBar, TransparentToolButton, \
-    BodyLabel, InfoBarPosition, CheckBox, PushButton, ExpandSettingCard
+    BodyLabel, InfoBarPosition, CheckBox, PushButton, ExpandSettingCard, ToolTipFilter, ToolTipPosition
 from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEditButton, CompleterMenu
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -821,6 +821,8 @@ class HotkeySettingCard(SettingCard):
         self.enableHotKey = enableHotKey
         self.button = TransparentToolButton(self)
         self.button.setIcon(FIF.EDIT)
+        self.button.setToolTip("设置快捷键")
+        self.button.installEventFilter(ToolTipFilter(self.button, 0, ToolTipPosition.BOTTOM))
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignRight)
         self.hBoxLayout.addSpacing(16)
         self.button.clicked.connect(self.clicked)
