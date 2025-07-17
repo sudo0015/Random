@@ -27,10 +27,10 @@ class Config(QConfig):
     EnableHideHotKey = ConfigItem("MainWindow", "EnableHideHotKey", True, BoolValidator())
 
     EnableCustomStyleSheet = ConfigItem("MainWindow", "EnableCustomStyleSheet", False, BoolValidator())
-    QssPath = ConfigItem("MainWindow", "QssPath", os.path.join(os.path.expanduser('~'), '.Random', 'qss', 'demo.qss'), ConfigValidator())
+    QssPath = ConfigItem("MainWindow", "QssPath", os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'qss', 'demo.qss'), ConfigValidator())
 
 
 YEAR = "2025"
-VERSION = "5.1.2"
+VERSION = "5.2.0"
 cfg = Config()
-qconfig.load(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'), cfg)
+qconfig.load(os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'config', 'config.json'), cfg)

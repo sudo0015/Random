@@ -1239,7 +1239,7 @@ class HomeInterface(SmoothScrollArea):
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
         if w.exec():
-            os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'config', 'config.json'))
+            os.startfile(os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'config', 'config.json'))
 
     def onHotkeyCardClicked(self, index):
         w = HotkeyMessageBox(index=index, parent=self.window())
@@ -1368,7 +1368,7 @@ class StyleSheetInterface(SmoothScrollArea):
         self.expandLayout.addWidget(self.styleSheetGroup)
 
     def __onSelectQssCardClicked(self):
-        file = QFileDialog.getOpenFileName(self, self.tr("选择文件"), os.path.join(os.path.expanduser('~'), '.Random', 'qss'), self.tr("样式表文件 (*.qss)"))[0]
+        file = QFileDialog.getOpenFileName(self, self.tr("选择文件"), os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'qss'), self.tr("样式表文件 (*.qss)"))[0]
         if not file or cfg.get(cfg.QssPath) == file:
             return
 
@@ -1379,7 +1379,7 @@ class StyleSheetInterface(SmoothScrollArea):
         w = NewQssMessageBox(parent=self.window())
         if w.exec():
             try:
-                filepath = os.path.join(os.path.expanduser('~'), '.Random', 'qss', f'{w.nameEdit.text()}.qss')
+                filepath = os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'qss', f'{w.nameEdit.text()}.qss')
                 content = ''
                 if w.templateCheckBox.isChecked():
                     content = 'QPushButton {\n    background-color: rgb(249, 249, 249);\n    color: rgb(0, 0, 0);\n    border-radius: 16px;\n    border: 0.5px groove gray;\n    border-style: outset;\n    font-family: "Microsoft YaHei";\n    font-size: 15pt;\n}\nQPushButton:hover {\n    background-color: rgba(249, 249, 249, 255);\n}\nQPushButton:pressed {\n    background-color: rgba(249, 249, 249, 255);\n}\n'
@@ -1393,7 +1393,7 @@ class StyleSheetInterface(SmoothScrollArea):
                     isClosable=False,
                     parent=self.window()
                 )
-                os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'qss', f'{w.nameEdit.text()}.qss'))
+                os.startfile(os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'qss', f'{w.nameEdit.text()}.qss'))
             except:
                 InfoBar.error(
                     '',
@@ -1406,7 +1406,7 @@ class StyleSheetInterface(SmoothScrollArea):
 
 
     def __onQssFolderCardClicked(self):
-        os.startfile(os.path.join(os.path.expanduser('~'), '.Random', 'qss'))
+        os.startfile(os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'qss'))
 
     def restartThreadFinished(self):
         InfoBar.success(
@@ -1756,6 +1756,7 @@ class CustomMessageBoxBase(MaskDialogBase):
         self.buttonGroup.setObjectName('buttonGroup')
         self.cancelButton.setObjectName('cancelButton')
         FluentStyleSheet.DIALOG.apply(self)
+        self.buttonGroup.setStyleSheet("border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;")
 
     def hideYesButton(self):
         self.yesButton.hide()
@@ -1880,7 +1881,7 @@ class NewQssMessageBox(CustomMessageBoxBase):
         return True
 
     def onYesBtn(self):
-        if os.path.exists(os.path.join(os.path.expanduser('~'), '.Random', 'qss', f'{self.nameEdit.text()}.qss')):
+        if os.path.exists(os.path.join(os.path.expanduser('~'), 'AriaToolkit', 'Random', 'qss', f'{self.nameEdit.text()}.qss')):
             self.nameEdit.clear()
             self.errorBar.contentLabel.setText("文件已存在")
             self.errorBar.setVisible(True)
